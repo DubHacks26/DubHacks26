@@ -14,12 +14,12 @@ if (process.env.NODE_ENV !== "production") {
 const app = express();
 const server = http.createServer(app);
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error(
-    "Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the environment before starting app.js."
+    "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in the environment before starting app.js."
   );
 }
 
