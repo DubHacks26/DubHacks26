@@ -45,7 +45,7 @@ function getCurrentSession() {
 
 function onAuthStateChange(callback) {
   return getSupabaseClient().auth.onAuthStateChange((_event, session) => {
-    callback(session);
+    callback(session, _event);
   });
 }
 
@@ -58,3 +58,15 @@ async function signOut() {
 }
 
 export { getCurrentSession, getUserInfo, onAuthStateChange, signIn, signOut, signUp };
+
+export async function requestPasswordReset(email) {
+  const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/auth?reset=1`,
+  });
+  if (error) throw error;
+}
+
+export async function updatePassword(password) {
+  const { error } = await getSupabaseClient().auth.updateUser({ password });
+  if (error) throw error;
+}

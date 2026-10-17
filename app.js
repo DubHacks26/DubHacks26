@@ -122,10 +122,27 @@ async function requireAuth(req, res, next) {
   }
 }
 
+// This separate server-only client never receives a user's session.
+const accountDirectory = process.env.SUPABASE_SECRET_KEY
+  ? createClient(supabaseUrl, process.env.SUPABASE_SECRET_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : null;
+
 const authAPI = express.Router();
 
 authAPI.post("/signup", async (req, res) => {
   const { email, password, name } = req.body || {};
+  const username = String(req.body?.username || "").trim().toLowerCase();
+  if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+    return res.status(400).json({ error: "Username must be 3–24 letters, numbers, or underscores." });
+  }
+  if (!accountDirectory) {
+    return res.status(503).json({ error: "Username registration needs the server Supabase key configured." });
+  }
+  const { data: existing, error: lookupError } = await accountDirectory.from("account_usernames").select("user_id").eq("username", username).maybeSingle();
+  if (lookupError) return res.status(503).json({ error: "Username registration is not configured yet. Apply the username migration." });
+  if (existing) return res.status(409).json({ error: "That username is already taken." });
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
@@ -133,7 +150,7 @@ authAPI.post("/signup", async (req, res) => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: name ? { name } : {} },
+    options: { data: { name, username } },
   });
 
   if (error) {
@@ -148,7 +165,16 @@ authAPI.post("/signup", async (req, res) => {
 });
 
 authAPI.post("/signin", async (req, res) => {
-  const { email, password } = req.body || {};
+  const { password } = req.body || {};
+  const identifier = String(req.body?.identifier || req.body?.email || "").trim();
+  let email = identifier;
+  if (!identifier.includes("@")) {
+    if (!accountDirectory) return res.status(503).json({ error: "Username sign-in is not configured yet. Use your email." });
+    const { data, error } = await accountDirectory.from("account_usernames").select("email").eq("username", identifier.toLowerCase()).maybeSingle();
+    if (error) return res.status(503).json({ error: "Username sign-in is not configured yet. Use your email." });
+    if (!data) return res.status(401).json({ error: "Invalid username or password." });
+    email = data.email;
+  }
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
