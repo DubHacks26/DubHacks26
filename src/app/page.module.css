@@ -1,0 +1,214 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  color: #18211c;
+  background:
+    radial-gradient(circle at 15% 15%, #e9f5ee 0, transparent 34%),
+    #f6f8f6;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.card {
+  width: min(100%, 440px);
+  padding: 44px;
+  border: 1px solid #e7ece8;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(20 44 30 / 8%);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #34734d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.title,
+.modalTitle {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.description,
+.modalDescription {
+  margin: 12px 0 28px;
+  color: #67736b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.primaryButton {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  background: #25643d;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.primaryButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #1d5232;
+}
+
+.primaryButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.signedIn {
+  margin: 24px 0 0;
+  color: #34734d;
+  font-size: 14px;
+}
+
+.backdrop {
+  position: fixed;
+  z-index: 10;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: rgb(16 27 20 / 48%);
+  inset: 0;
+}
+
+.modal {
+  position: relative;
+  width: min(100%, 420px);
+  padding: 36px;
+  border: 1px solid #e7ece8;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgb(0 0 0 / 18%);
+}
+
+.closeButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #67736b;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.closeButton:hover {
+  background: #f1f5f2;
+  color: #18211c;
+}
+
+.modalTitle {
+  font-size: 28px;
+}
+
+.modalDescription {
+  margin: 10px 0 24px;
+}
+
+.form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #303b33;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #dbe3dd;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: #18211c;
+  font: inherit;
+  font-size: 15px;
+}
+
+.input:focus {
+  border-color: #34734d;
+  box-shadow: 0 0 0 3px rgb(52 115 77 / 12%);
+}
+
+.input::placeholder {
+  color: #a0aaa3;
+}
+
+.error {
+  margin: -4px 0 0;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.message {
+  margin: -4px 0 0;
+  color: #25643d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.form .primaryButton {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.switchMode {
+  margin: 20px 0 0;
+  color: #67736b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #25643d;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.textButton:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 32px 26px;
+  }
+
+  .modal {
+    padding: 32px 24px 26px;
+  }
+}
