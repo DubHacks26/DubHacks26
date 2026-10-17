@@ -52,6 +52,8 @@ UPDATE products SET image_url = 'https://unsplash.com' WHERE name LIKE '%Speaker
 UPDATE products SET image_url = 'https://unsplash.com' WHERE name LIKE '%Canon%' OR name LIKE '%Sony Alpha%';
 UPDATE products SET image_url = 'https://unsplash.com' WHERE name LIKE '%Mini 4 Pro%';
 
+ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS color TEXT DEFAULT 'grey';
 
 CREATE TABLE orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -108,6 +110,7 @@ GROUP BY orders.id, orders.user_id, orders.status, orders.created_at, orders.tot
 
 -- 6. Insert sample search testing data
 INSERT INTO products (name, description, price, user_id) VALUES
+
 -- Electronics - Premium Tech
 ('iPhone 15 Pro Max 1TB', 'The ultimate iPhone with titanium design, A17 Pro chip, and professional camera system. Perfect for creators and professionals.', 1599.99, NULL),
 ('Samsung Galaxy S24 Ultra 512GB', 'AI-powered flagship with S Pen, 200MP camera, and Galaxy AI features for enhanced productivity.', 1419.99, NULL),
