@@ -1,0 +1,79 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap");
+
+:root {
+  --ink: #2a2028;
+  --muted: #776d73;
+  --paper: #f8f6f2;
+  --plum: #6d3a63;
+  --plum-dark: #4c2947;
+  --lavender: #e9deeb;
+  --blush: #f3ddd9;
+  --coral: #e36f5e;
+  --sage: #dfe8dd;
+  --line: #e7e1dc;
+  --shadow: 0 18px 55px rgb(67 45 61 / 12%);
+  --font-display: "DM Serif Display", Georgia, serif;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: "DM Sans", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
+button {
+  color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgb(109 58 99 / 35%);
+  outline-offset: 2px;
+}
+.shop-kicker {
+  margin: 0 0 0.55rem;
+  color: var(--plum);
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.shop-page {
+  max-width: 1050px;
+  margin: auto;
+  padding: 3.5rem 3rem 6rem;
+}
+.shop-panel {
+  padding: 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+}
+.shop-empty {
+  display: flex;
+  min-height: 160px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .shop-page {
+    padding: 2rem 1rem 6rem;
+  }
+}

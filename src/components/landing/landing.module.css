@@ -1,0 +1,354 @@
+.landing {
+  min-height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(circle at 80% 20%, #f0dce4 0, transparent 28%),
+    var(--paper);
+}
+.navigation {
+  position: relative;
+  display: flex;
+  height: 5.5rem;
+  max-width: 1260px;
+  align-items: center;
+  justify-content: space-between;
+  margin: auto;
+  padding: 0 2rem;
+}
+.links {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  gap: 2.3rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+.links a {
+  color: inherit;
+  text-decoration: none;
+}
+.links a:hover {
+  color: var(--plum);
+}
+.hero {
+  display: grid;
+  min-height: 690px;
+  max-width: 1240px;
+  grid-template-columns: 0.85fr 1.15fr;
+  align-items: center;
+  gap: 2rem;
+  margin: auto;
+  padding: 4.7rem 2rem 5rem;
+}
+.copy {
+  position: relative;
+  z-index: 2;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: var(--lavender);
+  color: var(--plum);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.copy h1 {
+  margin: 1.5rem 0;
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 6vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.065em;
+  line-height: 0.88;
+}
+.copy h1 em {
+  color: var(--plum);
+}
+.description {
+  max-width: 32rem;
+  color: var(--muted);
+  font-size: 1.14rem;
+  line-height: 1.7;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1.7rem;
+  margin: 2rem 0 1.3rem;
+}
+.shoppers {
+  display: flex;
+  align-items: center;
+}
+.avatars {
+  display: flex;
+  margin-right: 0.6rem;
+}
+.avatars span {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  margin-left: -0.45rem;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--blush);
+  font-size: 0.55rem;
+}
+.avatars span:nth-child(2) {
+  background: var(--sage);
+}
+.avatars span:nth-child(3) {
+  background: var(--lavender);
+}
+.shoppers p {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.shoppers strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+.note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--plum);
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+.visual {
+  position: relative;
+  display: grid;
+  height: 600px;
+  place-items: center;
+}
+.phone {
+  z-index: 2;
+  width: 325px;
+  overflow: hidden;
+  border: 8px solid var(--ink);
+  border-radius: 2.5rem;
+  background: #fff;
+  box-shadow: 0 30px 80px rgb(72 43 66 / 25%);
+  transform: rotate(2.5deg);
+}
+.phoneTop {
+  display: flex;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.1rem;
+  font-size: 0.63rem;
+}
+.phone > img {
+  width: 100%;
+  height: 287px;
+  object-fit: cover;
+}
+.phoneDetails {
+  padding: 1rem 1.1rem 1.2rem;
+}
+.phoneDetails > small {
+  color: var(--plum);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.phoneDetails h2 {
+  margin: 0.4rem 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 400;
+}
+.phoneDetails > div {
+  display: flex;
+  justify-content: space-between;
+}
+.phoneDetails > div span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #bb782d;
+  font-size: 0.8rem;
+}
+.phoneActions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0 !important;
+}
+.phoneActions span {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 5px 20px #ddd;
+}
+.phoneActions span:last-child {
+  background: var(--coral);
+  color: #fff;
+}
+.swipeCue {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.57rem;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.floatingProduct {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  width: 180px;
+  flex-direction: column;
+  padding: 0.65rem;
+  border-radius: 1.3rem;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.floatingProduct img {
+  width: 100%;
+  height: 145px;
+  border-radius: 0.9rem;
+  object-fit: cover;
+}
+.floatingProduct > span {
+  margin: 0.75rem 0 0.25rem;
+  color: var(--plum);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+}
+.floatingProduct strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+.floatingProduct small {
+  margin-top: 0.25rem;
+  font-weight: 800;
+}
+.left {
+  bottom: 8%;
+  left: 1%;
+  transform: rotate(-7deg);
+}
+.right {
+  top: 9%;
+  right: 0;
+  transform: rotate(7deg);
+}
+.match {
+  position: absolute;
+  right: 5%;
+  bottom: 14%;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.1rem 0.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: 1rem;
+  background: var(--plum);
+  box-shadow: var(--shadow);
+  color: #fff;
+}
+.match svg {
+  grid-row: span 2;
+  align-self: center;
+}
+.match span {
+  font-size: 0.63rem;
+  opacity: 0.7;
+}
+.benefits {
+  display: grid;
+  max-width: 1180px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: auto;
+  padding: 2rem 2rem 5rem;
+}
+.benefits article {
+  position: relative;
+  padding: 1.7rem 3rem 0 0;
+  border-top: 1px solid var(--line);
+}
+.benefits article > span {
+  color: #a99fa5;
+  font-size: 0.65rem;
+}
+.benefits svg {
+  float: right;
+  color: var(--plum);
+}
+.benefits h2 {
+  margin: 0.6rem 0 0.3rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+.benefits p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .navigation {
+    height: 4.5rem;
+    padding: 0 1.2rem;
+  }
+  .navigation .links,
+  .navigation > button {
+    display: none;
+  }
+  .hero {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    padding: 3rem 1.2rem 2rem;
+    text-align: center;
+  }
+  .copy h1 {
+    font-size: 3.8rem;
+  }
+  .description {
+    font-size: 1rem;
+  }
+  .actions {
+    flex-direction: column;
+  }
+  .note {
+    justify-content: center;
+  }
+  .visual {
+    width: 100%;
+    height: 520px;
+  }
+  .phone {
+    width: 290px;
+  }
+  .right {
+    right: -2rem;
+    width: 140px;
+  }
+  .floatingProduct img {
+    height: 110px;
+  }
+  .match {
+    right: 0;
+  }
+  .benefits {
+    grid-template-columns: 1fr;
+    padding: 1rem 1.2rem 3rem;
+  }
+}

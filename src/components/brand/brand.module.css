@@ -1,0 +1,29 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.56rem;
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.brand > span:last-child > span {
+  color: var(--plum);
+}
+.mark {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: var(--plum);
+  color: #fff;
+  transform: rotate(-4deg);
+}
+.compact {
+  font-size: 0.76rem;
+}
+.compact .mark {
+  display: none;
+}

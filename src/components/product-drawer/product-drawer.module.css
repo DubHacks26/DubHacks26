@@ -1,0 +1,153 @@
+.backdrop {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  background: rgb(38 29 36 / 40%);
+  backdrop-filter: blur(3px);
+}
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(480px, 100%);
+  overflow-y: auto;
+  background: var(--paper);
+  box-shadow: -20px 0 70px rgb(38 29 36 / 12%);
+  animation: slideIn 300ms ease;
+}
+.top {
+  display: flex;
+  height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.2rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.image {
+  width: 100%;
+  height: 330px;
+  object-fit: cover;
+}
+.body {
+  padding: 1.5rem;
+}
+.body h2 {
+  margin: 0.25rem 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 400;
+}
+.body > p:not(:first-child) {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.body h3 {
+  margin: 1.5rem 0 0.7rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+.body li {
+  margin: 0.5rem 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.rating {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rating > span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #b6782f;
+  font-size: 0.75rem;
+}
+.note {
+  display: flex;
+  gap: 0.7rem;
+  padding: 1rem;
+  border-radius: 0.9rem;
+  background: var(--lavender);
+  color: var(--plum);
+}
+.note svg {
+  flex: none;
+}
+.note p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.note small {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+.reviewBars {
+  margin: 1.5rem 0;
+}
+.reviewBars > div {
+  display: grid;
+  grid-template-columns: 35px 1fr 30px;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.45rem 0;
+  font-size: 0.65rem;
+}
+.reviewBars span {
+  display: flex;
+  align-items: center;
+}
+.reviewBars i {
+  height: 6px;
+  background: #fff;
+}
+.reviewBars b {
+  display: block;
+  height: 100%;
+  background: var(--plum);
+}
+.sentiments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.sentiments span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.65rem;
+}
+.sentiments svg {
+  width: 14px;
+  height: 14px;
+}
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-top: 2rem;
+}
+.actions button {
+  font-size: 0.75rem;
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+}
+@media (max-width: 760px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}

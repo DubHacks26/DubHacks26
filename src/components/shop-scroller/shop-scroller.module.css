@@ -1,0 +1,221 @@
+.shell {
+  min-height: 100vh;
+  background: #f6f3ef;
+}
+.sidebar {
+  position: fixed;
+  z-index: 20;
+  inset: 0 auto 0 0;
+  display: flex;
+  width: 235px;
+  flex-direction: column;
+  padding: 1.4rem 1rem;
+  border-right: 1px solid var(--line);
+  background: #fcfbf9;
+}
+.sidebar > div:first-child {
+  padding: 0.2rem 0.65rem 2rem;
+}
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.sidebar nav button {
+  position: relative;
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.75rem 0.8rem;
+  border-radius: 0.7rem;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+.sidebar nav button:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.sidebar nav .activeNav {
+  background: var(--lavender);
+  color: var(--plum);
+}
+.activeNav i {
+  position: absolute;
+  right: 0.75rem;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--plum);
+}
+.tasteCard {
+  margin-top: auto;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: var(--blush);
+  color: var(--plum-dark);
+}
+.tasteCard strong {
+  display: block;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.72rem;
+}
+.tasteCard p {
+  margin: 0 0 0.7rem;
+  font-size: 0.64rem;
+  line-height: 1.5;
+}
+.tasteCard > div {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(109 58 99 / 15%);
+}
+.tasteCard > div i {
+  display: block;
+  width: 68%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--plum);
+}
+.user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.2rem 0.35rem 0.2rem;
+}
+.user > div {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: var(--sage);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+}
+.user span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: 0.65rem;
+}
+.user small {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.55rem;
+}
+.main {
+  min-height: 100vh;
+  margin-left: 235px;
+}
+.topbar {
+  display: flex;
+  height: 5rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0 3rem;
+  border-bottom: 1px solid var(--line);
+  background: rgb(252 251 249 / 82%);
+}
+.search {
+  width: 305px;
+  justify-content: flex-start;
+  padding: 0.65rem 0.85rem !important;
+  color: var(--muted) !important;
+  font-size: 0.74rem !important;
+  font-weight: 500 !important;
+}
+.search kbd {
+  margin-left: auto;
+  padding: 0.12rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: var(--paper);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.6rem;
+}
+.streak {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  color: #b56f25;
+  font-size: 0.7rem;
+}
+.streak strong {
+  color: var(--ink);
+}
+.toast {
+  position: fixed;
+  z-index: 80;
+  bottom: 2rem;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem 1.1rem;
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: var(--shadow);
+  color: #fff;
+  font-size: 0.75rem;
+  transform: translateX(-50%);
+}
+.mobileNav {
+  display: none;
+}
+@media (max-width: 760px) {
+  .sidebar {
+    display: none;
+  }
+  .main {
+    margin-left: 0;
+    padding-bottom: 4.5rem;
+  }
+  .topbar {
+    height: 4rem;
+    padding: 0 0.8rem;
+  }
+  .search {
+    flex: 1;
+    width: auto;
+  }
+  .search span {
+    display: block;
+  }
+  .search kbd,
+  .streak {
+    display: none;
+  }
+  .mobileNav {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    height: 4.3rem;
+    justify-content: space-around;
+    border-top: 1px solid var(--line);
+    background: rgb(255 255 255 / 95%);
+    backdrop-filter: blur(12px);
+  }
+  .mobileNav button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 0.55rem;
+  }
+  .mobileNav button svg {
+    width: 1.25rem;
+  }
+  .mobileNav .activeMobile {
+    color: var(--plum);
+  }
+}
+/* App shell */

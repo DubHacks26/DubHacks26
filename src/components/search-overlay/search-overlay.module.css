@@ -1,0 +1,87 @@
+.backdrop {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  padding: 8vh 1rem;
+  background: rgb(38 29 36 / 45%);
+  backdrop-filter: blur(6px);
+}
+.modal {
+  max-width: 670px;
+  margin: auto;
+  overflow: hidden;
+  border-radius: 1.3rem;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+}
+.input > svg {
+  color: var(--plum);
+}
+.input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: 1.1rem;
+}
+.input button {
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+.suggestions,
+.results {
+  padding: 1.2rem;
+}
+.suggestions button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.suggestions button svg:last-child {
+  margin-left: auto;
+}
+.results > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.results img {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.6rem;
+  object-fit: cover;
+}
+.results button > span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.results small {
+  margin-top: 0.2rem;
+  color: var(--muted);
+}

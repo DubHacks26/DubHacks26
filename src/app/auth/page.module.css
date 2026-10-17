@@ -4,8 +4,7 @@
   place-items: center;
   padding: 24px;
   color: #18211c;
-  background:
-    radial-gradient(circle at 15% 15%, #e9f5ee 0, transparent 34%),
+  background: radial-gradient(circle at 15% 15%, #e9f5ee 0, transparent 34%),
     #f6f8f6;
   font-family: var(--font-geist-sans), sans-serif;
 }
@@ -58,7 +57,9 @@
   font: inherit;
   font-size: 15px;
   font-weight: 600;
-  transition: background 150ms ease, transform 150ms ease;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -220,3 +221,4 @@
     padding: 32px 24px 26px;
   }
 }
+/* Existing account screen, retained at /auth. */

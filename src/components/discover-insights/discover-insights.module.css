@@ -1,0 +1,155 @@
+.insights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding-top: 4.4rem;
+}
+.panel {
+  padding: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panelHead > span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.panelHead svg {
+  color: var(--plum);
+}
+.panelHead small {
+  color: #5d976e;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.panelHead button {
+  border: 0;
+  background: none;
+  color: var(--plum);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+.taste h3 {
+  margin: 0.9rem 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+.taste > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.65rem;
+  line-height: 1.5;
+}
+.tags {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin: 0.8rem 0;
+}
+.tags span {
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.58rem;
+}
+.taste > button {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0.7rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--plum);
+  cursor: pointer;
+  font-size: 0.63rem;
+  font-weight: 800;
+}
+.budget > div:nth-child(2) {
+  height: 6px;
+  margin: 1rem 0 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper);
+}
+.budget > div:nth-child(2) i {
+  display: block;
+  width: 32%;
+  height: 100%;
+  background: var(--plum);
+}
+.budget > p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+.budget .panelHead strong {
+  color: var(--plum);
+  font-size: 0.7rem;
+}
+.friend {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-top: 0.8rem;
+}
+.friend img {
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 0.65rem;
+  object-fit: cover;
+}
+.friend p {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+  font-size: 0.64rem;
+}
+.friend p span,
+.friend p small {
+  margin-top: 0.1rem;
+  color: var(--muted);
+}
+.friend > svg {
+  color: var(--coral);
+}
+.tip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem 1rem;
+  border-radius: 1rem;
+  background: var(--blush);
+  color: var(--plum-dark);
+}
+.tip p {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 0.66rem;
+}
+.tip span {
+  margin-top: 0.1rem;
+  opacity: 0.75;
+}
+@media (max-width: 1020px) {
+  .insights {
+    display: none;
+  }
+}

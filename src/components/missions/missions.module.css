@@ -1,0 +1,210 @@
+.prompt {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 2.5rem 0 1.5rem;
+  padding: 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.prompt > svg {
+  flex: none;
+  margin-top: 0.5rem;
+  color: var(--plum);
+}
+.prompt textarea {
+  flex: 1;
+  min-height: 5rem;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+.prompt button {
+  flex: none;
+}
+.ideas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.8rem 0 2.5rem;
+}
+.ideas button {
+  font-size: 0.75rem;
+}
+.history {
+  border-top: 1px solid var(--line);
+}
+.history button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--plum);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: left;
+}
+.history button > svg:first-child {
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0.65rem;
+  border-radius: 0.7rem;
+  background: var(--lavender);
+}
+.history span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+.history small {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.dashboard {
+  margin-top: 2rem;
+  padding: 2rem;
+}
+.banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.banner h2 {
+  margin: 0.2rem 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 400;
+}
+.banner p:last-child {
+  color: var(--muted);
+}
+.budget {
+  display: flex;
+  flex-direction: column;
+  color: var(--plum);
+  text-align: right;
+}
+.budget strong {
+  margin-top: 0.3rem;
+  font-size: 1.7rem;
+}
+.budget small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--paper);
+}
+.progress i {
+  display: block;
+  width: 55%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--plum);
+}
+.checklist {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.7rem;
+  margin: 2rem 0;
+}
+.checklist > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+}
+.checklist > div > span {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sage);
+  font-size: 0.65rem;
+}
+.checklist p {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: 0.7rem;
+}
+.checklist small {
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.55rem;
+}
+.items > div {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line);
+}
+.items img {
+  width: 3.3rem;
+  height: 3.3rem;
+  border-radius: 0.6rem;
+  object-fit: cover;
+}
+.items span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: 0.78rem;
+}
+.items small {
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+.actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+@media (max-width: 760px) {
+  .prompt {
+    flex-wrap: wrap;
+  }
+  .prompt textarea {
+    width: calc(100% - 3rem);
+    font-size: 1.2rem;
+  }
+  .prompt button {
+    margin-left: auto;
+  }
+  .dashboard {
+    padding: 1.2rem;
+  }
+  .banner {
+    flex-direction: column;
+  }
+  .budget {
+    text-align: left;
+  }
+  .checklist {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

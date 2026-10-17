@@ -1,0 +1,41 @@
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header h1 {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.3vw, 2.7rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 1.1;
+}
+
+.description {
+  margin: 0.7rem 0 0;
+  color: var(--muted);
+  font-size: 0.89rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .header {
+    align-items: flex-end;
+  }
+  .header > :last-child:not(:first-child) {
+    flex: none;
+  }
+  .header > button {
+    width: 2.8rem;
+    height: 2.8rem;
+    overflow: hidden;
+    padding: 0;
+    font-size: 0;
+  }
+  .header > button svg {
+    flex: none;
+  }
+}
