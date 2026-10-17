@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { navItems, products } from "@/utils/shopScrollerData";
+import { getFeed, matches, recordAction, defaultPreferences, captureFeedState, undoFeedAction } from "@/utils/feed.mjs";
+import FeedPreferences from "@/components/feed-preferences/feed-preferences";
 import Discover from "@/components/discover/discover";
 import Missions from "@/components/missions/missions";
 import Collections from "@/components/collections/collections";
@@ -15,7 +17,7 @@ import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./shop-scroller.module.css";
 
-function Sidebar({ page, onPageChange }) {
+function Sidebar({ page, onPageChange, username, count }) {
   return (
     <aside className={styles.sidebar}>
       <Brand />
@@ -36,15 +38,15 @@ function Sidebar({ page, onPageChange }) {
       <div className={styles.tasteCard}>
         <Icon name="sparkles" size={18} />
         <strong>Your taste is taking shape</strong>
-        <p>12 swipes improved your recommendations this week.</p>
+        <p>{count} likes are shaping your recommendations.</p>
         <div>
           <i />
         </div>
       </div>
       <div className={styles.user}>
-        <div>OM</div>
+        <div>{username.slice(0, 2).toUpperCase()}</div>
         <span>
-          <strong>Olivia Martin</strong>
+          <strong>{username}</strong>
           <small>Taste explorer</small>
         </span>
         <Icon name="more" size={18} />
@@ -77,10 +79,14 @@ function Topbar({ onSearch, onMessages }) {
   );
 }
 
-export default function AppShell() {
+export default function AppShell({ profile, setProfile, user }) {
   const [page, setPage] = useState("Discover");
-  const [index, setIndex] = useState(0);
-  const [saved, setSaved] = useState([]);
+  const saved = profile.saved;
+  const feed = getFeed(products, profile);
+  const currentProduct = feed[0];
+  const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
+  const [tuning, setTuning] = useState(false);
+
   const [lastSwipe, setLastSwipe] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -93,22 +99,18 @@ export default function AppShell() {
 
   const toggleSaved = (product) => {
     const isAdding = !saved.includes(product.id);
-    setSaved((current) =>
-      isAdding
-        ? [...current, product.id]
-        : current.filter((id) => id !== product.id),
-    );
+    setProfile(current => ({ ...current, saved: isAdding ? [...current.saved, product.id] : current.saved.filter(id => id !== product.id) }));
     showToast(isAdding ? `${product.name} saved` : `${product.name} removed`);
   };
 
-  const swipe = (direction) => {
-    const currentProduct = products[index % products.length];
-    const added = direction === "right" && !saved.includes(currentProduct.id);
-    setLastSwipe({ index, productId: currentProduct.id, added });
-    if (added) setSaved((current) => [...current, currentProduct.id]);
-    setIndex((current) => current + 1);
-    showToast(direction === "right" ? "Saved to Interested" : "Feed updated");
+  const act = (action) => {
+    if (!currentProduct) return;
+    // Save only feed-related fields so Undo cannot roll back a later bookmark.
+    setLastSwipe(captureFeedState(profile));
+    setProfile(current => recordAction(current, currentProduct.id, action));
+    showToast(action === "like" ? "Liked. More finds like this, without adding to your wishlist." : action === "skip" ? "Skipped for now." : "Feedback noted. Similar finds will rank lower. Undo is available.");
   };
+  const swipe = direction => act(direction === "right" ? "like" : "skip");
 
   useEffect(() => {
     const openSearch = (event) => {
@@ -123,11 +125,9 @@ export default function AppShell() {
 
   const undoSwipe = () => {
     if (!lastSwipe) return;
-    setIndex(lastSwipe.index);
-    if (lastSwipe.added)
-      setSaved((current) => current.filter((id) => id !== lastSwipe.productId));
+    setProfile(current => undoFeedAction(current, lastSwipe));
     setLastSwipe(null);
-    showToast("Last swipe undone");
+    showToast("Last feed action undone");
   };
 
   const shareProduct = async (product) => {
@@ -147,7 +147,15 @@ export default function AppShell() {
   if (page === "Discover")
     content = (
       <Discover
-        index={index}
+        product={currentProduct}
+        nextProduct={feed[1]}
+        profile={profile}
+        noMatches={matchingCount === 0}
+        canUndo={Boolean(lastSwipe)}
+        onTune={() => setTuning(true)}
+        onFeedback={act}
+        onRevisit={() => { setProfile(current => ({ ...current, seen: [] })); setLastSwipe(null); }}
+        onReset={() => { setProfile(current => ({ ...current, preferences: { ...defaultPreferences }, seen: [] })); setLastSwipe(null); }}
         onDetails={(product, type) => setDrawer({ product, type })}
         onNavigate={setPage}
         onSave={toggleSaved}
@@ -160,15 +168,15 @@ export default function AppShell() {
   else if (page === "Missions")
     content = <Missions onDiscover={() => setPage("Discover")} />;
   else if (page === "Collections")
-    content = <Collections onSave={toggleSaved} saved={saved} />;
+    content = <Collections onSave={toggleSaved} saved={saved} onDiscover={() => setPage("Discover")} />;
   else if (page === "Budget")
     content = <Budget onRemove={toggleSaved} saved={saved} />;
   else if (page === "Friends") content = <Friends />;
-  else content = <Profile />;
+  else content = <Profile profile={profile} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} onTune={() => setTuning(true)} />;
 
   return (
     <div className={styles.shell}>
-      <Sidebar onPageChange={setPage} page={page} />
+      <Sidebar onPageChange={setPage} page={page} count={profile.likes.length} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
       <main className={styles.main}>
         <Topbar
           onMessages={() => setPage("Friends")}
@@ -192,6 +200,10 @@ export default function AppShell() {
           </button>
         ))}
       </nav>
+      {tuning && <FeedPreferences preferences={profile.preferences} onClose={() => setTuning(false)} onApply={preferences => {
+        setProfile(current => ({ ...current, preferences, seen: [] }));
+        setLastSwipe(null); setTuning(false); showToast("Preferences updated. Your feed is ready.");
+      }} />}
       {drawer && (
         <ProductDrawer
           onClose={() => setDrawer(null)}
@@ -210,7 +222,7 @@ export default function AppShell() {
         />
       )}
       {toast && (
-        <p className={styles.toast}>
+        <p className={styles.toast} role="status">
           <Icon name="check" size={16} />
           {toast}
         </p>

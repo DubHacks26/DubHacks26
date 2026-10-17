@@ -8,35 +8,14 @@ import ProductImage from "@/components/product-image/product-image";
 import PageHeader from "@/components/page-header/page-header";
 import styles from "./collections.module.css";
 
-const starterCollections = [
-  {
-    name: "Dream Space",
-    count: 8,
-    estimate: 482,
-    images: [products[1], products[3], products[0]],
-  },
-  {
-    name: "Everyday Upgrades",
-    count: 12,
-    estimate: 706,
-    images: [products[2], products[0], products[3]],
-  },
-  {
-    name: "Gifts for Friends",
-    count: 5,
-    estimate: 224,
-    images: [products[3], products[1], products[2]],
-  },
-];
-
-export default function Collections({ saved, onSave }) {
+export default function Collections({ saved, onSave, onDiscover }) {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [custom, setCustom] = useState([]);
   const savedProducts = products.filter((product) =>
     saved.includes(product.id),
   );
-  const collections = [...starterCollections, ...custom];
+  const collections = custom;
 
   const createCollection = (event) => {
     event.preventDefault();
@@ -44,7 +23,7 @@ export default function Collections({ saved, onSave }) {
     if (!trimmed) return;
     setCustom((current) => [
       ...current,
-      { name: trimmed, count: 0, estimate: 0, images: products.slice(0, 3) },
+      { name: trimmed, count: 0, estimate: 0, images: [] },
     ]);
     setName("");
     setShowForm(false);
@@ -79,6 +58,11 @@ export default function Collections({ saved, onSave }) {
           </Button>
         </form>
       )}
+      {!savedProducts.length && <div className="shop-empty shop-panel">
+        <Icon name="bookmark" size={30} /><h2>Save something worth coming back to.</h2>
+        <p>Bookmarks live here. Likes help tune your feed.</p>
+        <Button onClick={onDiscover}>Explore Discover</Button>
+      </div>}
       <div className={styles.grid}>
         {collections.map((collection, index) => (
           <article className={styles.card} key={`${collection.name}-${index}`}>
@@ -91,7 +75,7 @@ export default function Collections({ saved, onSave }) {
               <span>
                 <strong>{collection.name}</strong>
                 <small>
-                  {collection.count + (index === 0 ? saved.length : 0)} items ·
+                  {collection.count} items ·
                   ${collection.estimate} est.
                 </small>
               </span>

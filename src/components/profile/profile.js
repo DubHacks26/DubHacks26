@@ -1,114 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./profile.module.css";
 
-const signals = [
-  "Warm minimalism",
-  "Under $100",
-  "High customer ratings",
-  "Sustainable materials",
-];
-
-export default function Profile() {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("Olivia Martin");
-  const [draft, setDraft] = useState(name);
-
-  const saveName = (event) => {
-    event.preventDefault();
-    if (draft.trim()) {
-      setName(draft.trim());
-      setEditing(false);
-    }
-  };
-
-  return (
-    <section className="shop-page">
-      <div className={styles.hero}>
-        <div className={styles.avatar}>
-          {name
-            .split(" ")
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase()}
-        </div>
-        <div>
-          <p className="shop-kicker">Your shopping DNA</p>
-          <h1>{name}</h1>
-          <p>Thoughtful finds, soft colors, practical details.</p>
-        </div>
-        <Button onClick={() => setEditing(true)} variant="secondary">
-          Edit profile
-        </Button>
-      </div>
-      {editing && (
-        <form className={styles.edit} onSubmit={saveName}>
-          <label htmlFor="profile-name">Display name</label>
-          <input
-            autoFocus
-            id="profile-name"
-            onChange={(event) => setDraft(event.target.value)}
-            value={draft}
-          />
-          <Button type="submit">Save</Button>
-          <Button onClick={() => setEditing(false)} variant="ghost">
-            Cancel
-          </Button>
-        </form>
-      )}
-      <div className={styles.stats}>
-        <div>
-          <strong>48</strong>
-          <span>Interested</span>
-        </div>
-        <div>
-          <strong>6</strong>
-          <span>Collections</span>
-        </div>
-        <div>
-          <strong>3</strong>
-          <span>Missions</span>
-        </div>
-        <div>
-          <strong>$20–150</strong>
-          <span>Sweet spot</span>
-        </div>
-      </div>
-      <div className={styles.grid}>
-        <div className="shop-panel">
-          <h2>Your taste map</h2>
-          <div className={styles.orbit}>
-            <span>
-              40%<small>Tech</small>
-            </span>
-            <i>
-              30%<small>Home</small>
-            </i>
-            <i>
-              20%<small>Fashion</small>
-            </i>
-            <i>
-              10%<small>Other</small>
-            </i>
-          </div>
-        </div>
-        <div className="shop-panel">
-          <h2>Top signals</h2>
-          {signals.map((signal) => (
-            <div className={styles.signal} key={signal}>
-              <Icon name="check" size={16} />
-              {signal}
-            </div>
-          ))}
-          <Button onClick={() => setEditing(true)} variant="secondary">
-            Tune preferences
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
+export default function Profile({ profile, username, onTune }) {
+  const p = profile.preferences;
+  return <section className="shop-page">
+    <div className={styles.hero}>
+      <div className={styles.avatar}>{username.slice(0, 2).toUpperCase()}</div>
+      <div><p className="shop-kicker">Your shopping DNA</p><h1>{username}</h1><p>Your taste, on your terms.</p></div>
+      <Button onClick={onTune} variant="secondary">Tune my feed</Button>
+    </div>
+    <div className={styles.stats}>
+      <div><strong>{profile.likes.length}</strong><span>Liked</span></div>
+      <div><strong>{profile.saved.length}</strong><span>Saved</span></div>
+      <div><strong>{profile.feedback.length}</strong><span>Feedback signals</span></div>
+      <div><strong>${p.minPrice}–${p.maxPrice}</strong><span>Price range</span></div>
+    </div>
+    <div className="shop-panel"><h2>Your preferences</h2>
+      {[["Categories", p.categories]].map(([label, values]) => <div className={styles.signal} key={label}><Icon name="check" size={16} /><strong>{label}:</strong> {values.join(", ") || "Open to everything"}</div>)}
+      <p>Likes influence recommendations. Bookmarks stay in your wishlist. Feedback changes ranking without changing these preferences.</p>
+      <Button onClick={onTune}>Edit preferences</Button>
+    </div>
+  </section>;
 }

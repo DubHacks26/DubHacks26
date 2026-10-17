@@ -1,6 +1,10 @@
-export const products = [
+import { normalizeProduct } from "./feed.mjs";
+
+const demoProducts = [
   {
     id: 1,
+    styles: ['minimalist', 'practical'],
+    colors: ['neutral'],
     name: "Studio Pro Headphones",
     brand: "Auraline",
     price: 89,
@@ -15,6 +19,8 @@ export const products = [
   },
   {
     id: 2,
+    styles: ['minimalist', 'aesthetic'],
+    colors: ['white', 'neutral'],
     name: "Noma Glow Lamp",
     brand: "Hearth & Form",
     price: 64,
@@ -29,6 +35,8 @@ export const products = [
   },
   {
     id: 3,
+    styles: ['sustainable', 'practical'],
+    colors: ['white'],
     name: "Cloudline Runners",
     brand: "North & Other",
     price: 76,
@@ -43,6 +51,8 @@ export const products = [
   },
   {
     id: 4,
+    styles: ['minimalist', 'budget-friendly'],
+    colors: ['pink'],
     name: "Daily Ritual Set",
     brand: "Morrow Skin",
     price: 42,
@@ -56,6 +66,9 @@ export const products = [
       "A simple three-step hydration ritual with cleanser, serum, and barrier cream.",
   },
 ];
+
+// Replace demoProducts with API records using normalizeProduct at this boundary.
+export const products = demoProducts.map(normalizeProduct);
 
 export const navItems = [
   { label: "Discover", icon: "compass" },

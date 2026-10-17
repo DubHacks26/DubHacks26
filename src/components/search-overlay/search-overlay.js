@@ -17,7 +17,7 @@ const suggestions = [
 export default function SearchOverlay({ onClose, onSelect }) {
   const [query, setQuery] = useState("");
   const results = products.filter((product) =>
-    `${product.name} ${product.brand} ${product.category}`
+    `${product.name} ${product.brand} ${product.category} ${product.tags.join(" ")} ${product.styles.join(" ")} ${product.colors.join(" ")}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   );

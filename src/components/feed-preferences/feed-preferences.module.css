@@ -1,0 +1,17 @@
+.dialog { position: fixed; inset: 0 0 0 auto; width: min(540px, 100%); max-width: 100%; height: 100svh; max-height: 100svh; margin: 0; padding: 2rem; border: 0; border-left: 1px solid var(--line); background: var(--paper); color: var(--ink); box-shadow: var(--shadow); }
+.dialog::backdrop { background: rgb(42 32 40 / 40%); }
+.dialog header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.dialog h2 { margin: 0; font: 2.3rem var(--font-display); }
+.fields { display: grid; gap: 1.5rem; text-align: left; }
+.note { color: var(--muted); font-size: .8rem; line-height: 1.6; }
+.fields fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.fields legend { margin-bottom: .7rem; font-size: .9rem; font-weight: 800; text-transform: capitalize; }
+.chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+.chips button { display: flex; align-items: center; gap: .4rem; border: 1px solid var(--line); padding: .55rem .8rem; border-radius: 2rem; background: white; color: var(--ink); cursor: pointer; font-size: .8rem; text-transform: capitalize; }
+.chips button[aria-pressed=true] { border-color: var(--plum); color: var(--plum); background: var(--lavender); box-shadow: inset 0 0 0 1px var(--plum); }
+.chips i { width: .9rem; height: .9rem; border: 1px solid #aaa; border-radius: 50%; }
+.prices { display: flex; gap: 1rem; }
+.prices label { display: grid; gap: .5rem; flex: 1; min-width: 0; font-size: .8rem; }
+.prices input { width: 100%; padding: .7rem; border: 1px solid var(--line); border-radius: .6rem; background: white; color: var(--ink); }
+.dialog footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .5rem; margin-top: 2rem; }
+@media(max-width: 520px) { .dialog { padding: 1.5rem; } }

@@ -3,10 +3,10 @@ import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import styles from "./discover-insights.module.css";
 
-export default function DiscoverInsights({ onNavigate, saved }) {
+export default function DiscoverInsights({ onNavigate, saved, profile, onTune }) {
   return (
     <aside className={styles.insights}>
-      <TasteCard onOpen={() => onNavigate("Profile")} />
+      <TasteCard onOpen={onTune} profile={profile} />
       <BudgetCard saved={saved} />
       <FriendsCard onOpen={() => onNavigate("Friends")} />
       <div className={styles.tip}>
@@ -20,36 +20,22 @@ export default function DiscoverInsights({ onNavigate, saved }) {
   );
 }
 
-function TasteCard({ onOpen }) {
-  return (
-    <section className={`${styles.panel} ${styles.taste}`}>
-      <div className={styles.panelHead}>
-        <span>
-          <Icon name="sparkles" size={17} /> Your taste
-        </span>
-        <small>Live</small>
-      </div>
-      <h3>Warm minimalism</h3>
-      <p>
-        You&apos;re leaning toward thoughtful design, soft neutrals, and useful
-        details.
-      </p>
-      <div className={styles.tags}>
-        <span>Minimal</span>
-        <span>Neutral</span>
-        <span>Functional</span>
-      </div>
-      <button onClick={onOpen} type="button">
-        See your taste profile <Icon name="arrowRight" size={15} />
-      </button>
-    </section>
-  );
+function TasteCard({ onOpen, profile }) {
+  const p = profile.preferences;
+  return <section className={`${styles.panel} ${styles.taste}`}>
+    <div className={styles.panelHead}><span><Icon name="sparkles" size={17} /> Your taste</span><small>Demo</small></div>
+    <h3>{p.categories.length ? "Picked for your interests" : "Open to discovery"}</h3>
+    <p>{profile.likes.length} likes shaping your feed · {profile.saved.length} wishlist finds</p>
+    <div className={styles.tags}>{(p.categories.length ? p.categories : ["All categories"]).map(tag => <span key={tag}>{tag}</span>)}</div>
+    <p>${p.minPrice}–${p.maxPrice} per item</p>
+    <button onClick={onOpen} type="button">Tune my feed <Icon name="arrowRight" size={15} /></button>
+  </section>;
 }
 
 function BudgetCard({ saved }) {
   const total = products
     .filter((product) => saved.includes(product.id))
-    .reduce((sum, product) => sum + product.price, 129);
+    .reduce((sum, product) => sum + product.price, 0);
 
   return (
     <section className={`${styles.panel} ${styles.budget}`}>

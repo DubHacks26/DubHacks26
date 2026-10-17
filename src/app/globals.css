@@ -77,3 +77,5 @@ textarea:focus-visible {
     padding: 2rem 1rem 6rem;
   }
 }
+.storage-notice { position: fixed; bottom: 1rem; left: 1rem; z-index: 100; max-width: 360px; padding: 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--paper); color: var(--plum); box-shadow: var(--shadow); font-size: .8rem; }
+.shop-panel > p { color: var(--muted); line-height: 1.7; }

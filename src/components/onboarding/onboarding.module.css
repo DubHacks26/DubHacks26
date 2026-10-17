@@ -180,3 +180,4 @@
     grid-template-columns: 1fr;
   }
 }
+.card form > button { margin-top: 2rem; margin-bottom: 2rem; }

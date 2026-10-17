@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { categoryBreakdown, products } from "@/utils/shopScrollerData";
+import { products } from "@/utils/shopScrollerData";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
@@ -13,7 +13,8 @@ export default function Budget({ saved, onRemove }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("400");
   const selected = products.filter((product) => saved.includes(product.id));
-  const total = selected.reduce((sum, product) => sum + product.price, 129);
+  const total = selected.reduce((sum, product) => sum + product.price, 0);
+  const categoryBreakdown = [...new Set(selected.map(p => p.category))].map(category => [category, total ? Math.round(selected.filter(p => p.category === category).reduce((sum, p) => sum + p.price, 0) / total * 100) : 0]);
   const percentage = Math.round((total / limit) * 100);
 
   const updateLimit = (event) => {

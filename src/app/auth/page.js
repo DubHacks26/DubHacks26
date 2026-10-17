@@ -89,7 +89,7 @@ export default function Home() {
       {error && <span role="alert">{error}</span>}
       <button className={styles.signOutButton} onClick={handleSignOut} disabled={busy}>{busy ? "Signing out…" : "Sign out"}</button>
     </header>
-    <ShopScrollerExperience />
+    <ShopScrollerExperience key={user.id} user={user} />
   </>;
 
   const titles = { signin: "Welcome back", signup: "Join the scroll", forgot: "Forgot password?", reset: "A fresh start" };

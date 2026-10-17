@@ -292,3 +292,32 @@
     display: none;
   }
 }
+/* Content determines card height so explanations never overlap the controls. */
+.stage { height: auto; }
+.card:not(.behind) { position: relative; }
+.behind { inset: 12px 0 0; height: 100%; }
+.tags { display: flex; flex-wrap: wrap; gap: .4rem; margin: .8rem 0; }
+.tags span { padding: .35rem .65rem; border-radius: 2rem; background: var(--lavender); color: var(--plum); font-size: .68rem; text-transform: capitalize; }
+.why { margin: .8rem 0; color: var(--muted); font-size: .78rem; line-height: 1.6; }
+.why summary, .feedback summary { color: var(--plum); cursor: pointer; font-weight: 700; }
+.why p { margin: .5rem 0; }
+.feedback { margin: 1.2rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; font-size: .8rem; background: white; }
+.feedback > div { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+.feedback p { color: var(--muted); line-height: 1.6; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 3rem 1.5rem; border: 1px solid var(--line); border-radius: 1.5rem; background: white; text-align: center; }
+.empty h2 { margin: 0; font: 2rem var(--font-display); }
+.empty p { max-width: 350px; color: var(--muted); line-height: 1.7; }
+.controls button:disabled { opacity: .45; cursor: default; }
+@media(max-width: 760px) {
+  .stage { min-height: 0; height: auto; }
+  .imageWrap { height: 280px; }
+  .controls { margin-top: 1.5rem; padding-bottom: 0; gap: .7rem; }
+  .hint { display: flex; font-size: .65rem; }
+  .feedback { margin: 1.2rem 1rem 6rem; }
+  .empty { margin: 1rem 1rem 6rem; }
+  .heading { gap: .5rem; align-items: center; }
+  .heading > button { font-size: .72rem; padding: .65rem; }
+}
+.imageWrap { touch-action: pan-y; user-select: none; }
+.imageWrap img { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
