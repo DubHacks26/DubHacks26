@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { signIn, signUp } from "@/api/UserAPI";
+import { useEffect, useState } from "react";
+import {
+  getCurrentSession,
+  onAuthStateChange,
+  signIn,
+  signOut,
+  signUp,
+} from "@/api/UserAPI";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -13,7 +19,36 @@ export default function Home() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const { data: { subscription } } = onAuthStateChange((session) => {
+      if (isMounted) {
+        setUser(session?.user || null);
+        setIsAuthLoading(false);
+      }
+    });
+
+    getCurrentSession()
+      .then(({ data: { session } }) => {
+        if (isMounted) {
+          setUser(session?.user || null);
+          setIsAuthLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsAuthLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -54,6 +89,16 @@ export default function Home() {
     }
   }
 
+  async function handleSignOut() {
+    try {
+      await signOut();
+      setUser(null);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to sign out. Please try again.");
+      setIsLoginOpen(true);
+    }
+  }
+
   return (
     <main className={styles.page}>
       <section className={styles.card}>
@@ -63,8 +108,19 @@ export default function Home() {
           Sign in to continue to your account.
         </p>
 
-        {user ? (
-          <p className={styles.signedIn}>Signed in as {user.email}</p>
+        {isAuthLoading ? (
+          <p className={styles.signedIn}>Restoring your session…</p>
+        ) : user ? (
+          <div className={styles.accountActions}>
+            <p className={styles.signedIn}>Signed in as {user.email}</p>
+            <button
+              className={styles.textButton}
+              type="button"
+              onClick={handleSignOut}
+            >
+              Sign out
+            </button>
+          </div>
         ) : (
           <button
             className={styles.primaryButton}

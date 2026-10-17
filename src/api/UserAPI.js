@@ -1,4 +1,5 @@
 import AxiosInstance from "@/utils/axiosInstance";
+import { getSupabaseClient } from "@/utils/supabaseClient";
 import { requestHandler } from "@/utils/tools";
 
 async function getUserInfo() {
@@ -11,22 +12,49 @@ async function getUserInfo() {
 
 async function signIn(credentials) {
   const response = await AxiosInstance.post("/auth/signin", credentials);
-  setAccessToken(response.data?.session?.access_token);
+  await persistSession(response.data?.session);
 
   return response.data;
 }
 
 async function signUp(credentials) {
   const response = await AxiosInstance.post("/auth/signup", credentials);
-  setAccessToken(response.data?.session?.access_token);
+  await persistSession(response.data?.session);
 
   return response.data;
 }
 
-function setAccessToken(accessToken) {
-  if (accessToken) {
-    AxiosInstance.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+async function persistSession(session) {
+  if (!session?.access_token || !session?.refresh_token) {
+    return;
+  }
+
+  const { error } = await getSupabaseClient().auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+
+  if (error) {
+    throw error;
   }
 }
 
-export { getUserInfo, signIn, signUp };
+function getCurrentSession() {
+  return getSupabaseClient().auth.getSession();
+}
+
+function onAuthStateChange(callback) {
+  return getSupabaseClient().auth.onAuthStateChange((_event, session) => {
+    callback(session);
+  });
+}
+
+async function signOut() {
+  const { error } = await getSupabaseClient().auth.signOut();
+
+  if (error) {
+    throw error;
+  }
+}
+
+export { getCurrentSession, getUserInfo, onAuthStateChange, signIn, signOut, signUp };

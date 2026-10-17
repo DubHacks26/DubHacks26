@@ -19,7 +19,7 @@ const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error(
-    "Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the environment before starting app2.js."
+    "Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the environment before starting app.js."
   );
 }
 
@@ -168,7 +168,7 @@ app.use("/auth", authAPI);
 // and req.supabase before relying on them with this app2.js entry point.
 const userAPI = require("./api/user").Router;
 
-app.use("/user", userAPI);
+app.use("/user", requireAuth, userAPI);
 
 let subscriptions = [];
 
