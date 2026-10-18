@@ -42,12 +42,16 @@ function clientFor(db) {
         finish_hashtag_embedding: ['p_id', 'p_token', 'p_embedding'],
         refresh_hashtag_graph: ['p_neighbors', 'p_threshold', 'p_rebuild'],
         get_hashtag_graph: ['p_name', 'p_limit', 'p_link_limit'],
+        get_hashtag_embeddings: ['p_node_ids'],
       }[name];
       assert.ok(parameters, name);
       const placeholders = parameters.map((_, i) => `$${i + 1}`).join(',');
       try {
         if (name === 'claim_hashtag_embedding') {
           return { data: (await db.query(`select * from public.${name}()`)).rows };
+        }
+        if (name === 'get_hashtag_embeddings') {
+          return { data: (await db.query('select * from public.get_hashtag_embeddings($1::uuid[])', [args.p_node_ids])).rows };
         }
         return { data: (await db.query(`select public.${name}(${placeholders}) as result`, parameters.map(key => args[key]))).rows[0].result };
       } catch (error) { return { data: null, error }; }
@@ -71,6 +75,7 @@ test('hashtag SQL migration and synchronization work together', async t => {
     '20261017232000_add_catalog_product_hashtags.sql',
     '20261017233000_catalog_recommendations.sql',
     '20261018010000_hashtag_graph.sql',
+    '20261018090000_hashtag_alignment_embeddings.sql',
     '20261018070000_taste_map_popularity_and_pruning.sql',
     '20261018081000_lower_hashtag_similarity_threshold.sql',
   ]) await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
@@ -89,8 +94,8 @@ test('hashtag SQL migration and synchronization work together', async t => {
       has_function_privilege('anon', oid, 'execute') as anon,
       has_function_privilege('authenticated', oid, 'execute') as authenticated,
       has_function_privilege('service_role', oid, 'execute') as service
-      from pg_proc where proname in ('claim_hashtag_embedding', 'finish_hashtag_embedding', 'refresh_hashtag_graph', 'get_hashtag_graph')`)).rows;
-    assert.equal(privileges.length, 4);
+      from pg_proc where proname in ('claim_hashtag_embedding', 'finish_hashtag_embedding', 'refresh_hashtag_graph', 'get_hashtag_graph', 'get_hashtag_embeddings')`)).rows;
+    assert.equal(privileges.length, 5);
     assert.ok(privileges.every(p => !p.anon && !p.authenticated && p.service));
     await assert.rejects(graph(null, 501));
     await assert.rejects(graph(null, 10, 2001));
@@ -115,6 +120,11 @@ test('hashtag SQL migration and synchronization work together', async t => {
     const nodes = await rows('hashtags');
     assert.equal(nodes.length, 13);
     assert.ok(nodes.every(h => Math.abs(Math.hypot(...JSON.parse(h.embedding)) - 1) < 1e-6));
+    const requestedEmbeddingIds = [nodes[0].id, nodes[1].id, nodes[0].id];
+    const embeddingResult = await client.rpc('get_hashtag_embeddings', { p_node_ids: requestedEmbeddingIds });
+    assert.equal(embeddingResult.data.length, 2);
+    assert.deepEqual(embeddingResult.data.map(row => row.id).sort(), [...new Set(requestedEmbeddingIds)].sort());
+    assert.ok(embeddingResult.data.every(row => row.embedding));
     const selections = await rows('hashtag_neighbors');
     const edges = await rows('hashtag_edges');
     assert.equal(selections.length, 12 * 8);

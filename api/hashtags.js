@@ -67,9 +67,10 @@ async function handleAlignment(req, res) {
 
   const client = req.catalogSupabase;
   try {
+    const uniqueIds = [...new Set(requestedIds)];
     const [interestsResult, hashtagsResult] = await Promise.all([
       client.from('user_interest_embeddings').select('embedding').eq('user_id', req.user.id).limit(5),
-      client.from('hashtags').select('id,embedding').in('id', [...new Set(requestedIds)]),
+      client.rpc('get_hashtag_embeddings', { p_node_ids: uniqueIds }),
     ]);
     if (interestsResult.error) throw interestsResult.error;
     if (hashtagsResult.error) throw hashtagsResult.error;
