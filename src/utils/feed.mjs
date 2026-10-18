@@ -22,7 +22,7 @@ export const categories = [
 export const defaultPreferences = {
   categories: [],
   minPrice: 20,
-  maxPrice: 150,
+  maxPrice: 5000,
 };
 
 export const likedCollectionId = "liked";

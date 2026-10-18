@@ -120,17 +120,24 @@ rows with `--force`, or process a small sample with `--limit 10`.
 
 ## Backend product recommendations
 
-Apply `supabase/migrations/20261017233000_catalog_recommendations.sql` with
-`npm run supabase:push` before using the recommendation API. This migration
-adds pgvector embeddings to the existing `catalog_products` table and creates
-five-slot user interests and idempotent positive interactions. The live
-catalog has hashtags in `catalog_products`; the older `products` table is not
-used for semantic recommendations.
+Apply the pending Supabase migrations with `npm run supabase:push` before using
+the recommendation API. `20261017233000_catalog_recommendations.sql` adds the
+hashtag-list embedding and five-slot user interests; the later
+`20261018040000_catalog_title_embeddings.sql` adds the independent title
+embedding. The live catalog has hashtags in `catalog_products`; the older
+`products` table is not used for semantic recommendations.
 
-`npm run generate:hashtags` now embeds each updated hashtag list on the backend
-with `Xenova/all-MiniLM-L6-v2`. A database trigger clears an embedding if its
-hashtags change, so stale vectors cannot be recommended. To fill missing
-vectors after the migration or after direct database edits, run:
+`catalog_products.embedding` contains the embedding of the generated hashtag
+list, while `catalog_products.title_embedding` independently contains the
+embedding of the product title. Both use `Xenova/all-MiniLM-L6-v2`, mean
+pooling, and L2 normalization. Separate triggers clear only the affected vector
+when hashtags or a title change, so a delayed worker cannot save a stale value.
+The existing recommendation algorithm continues to use the hashtag-list vector;
+the title vector is stored for future semantic title features.
+
+`npm run generate:hashtags` embeds each updated hashtag list and fills a missing
+title vector for that catalog row. To fill either missing vector after the
+migration or after direct database edits, run:
 
 ```bash
 npm run backfill:embeddings
@@ -176,9 +183,8 @@ continues to personalize later sessions.
 
 Run `npm run supabase:push` to apply any pending local migration, including
 `20261018030000_feed_feedback_actions.sql`, which adds the UI's additional
-feedback action types. Run `npm run backfill:embeddings` to make the vector
-similarity contribution available for products whose hashtag embeddings are
-still null. The title-word baseline works without those vectors.
+feedback action types. Run `npm run backfill:embeddings` to populate either
+missing catalog embedding. The title-word baseline works without vectors.
 
 Interest similarity and learning rate live in
 `lib/recommendation-config.cjs`.

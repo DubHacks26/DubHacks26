@@ -5,7 +5,9 @@ import {
   validateVector, normalizeVector, dotProduct, cosineSimilarity,
   weightedUpdate, closestInterest, shouldCreateInterest, updateInterests,
 } from '../lib/vector.mjs';
-import { hashtagsToText, embedHashtags } from '../lib/product-embeddings.mjs';
+import {
+  hashtagsToText, titleToText, embedHashtags, embedTitle, embedCatalogTitle,
+} from '../lib/product-embeddings.mjs';
 
 const axis = index => Array.from({ length: EMBEDDING_DIMENSIONS }, (_, i) => i === index ? 1 : 0);
 const near = (left, right, tolerance = 1e-8) => assert.ok(Math.abs(left - right) < tolerance, `${left} != ${right}`);
@@ -14,6 +16,31 @@ test('hashtags become natural-language text; empty tags have no embedding', asyn
   assert.equal(hashtagsToText(['#coffee_machine', 'kitchen_appliances', 'espresso']), 'coffee machine, kitchen appliances, espresso');
   assert.equal(hashtagsToText([]), '');
   assert.equal(await embedHashtags([]), null);
+});
+
+test('titles are embedded separately from hashtag lists', async () => {
+  assert.equal(titleToText('  Compact\nCoffee   Maker  '), 'Compact Coffee Maker');
+  assert.equal(titleToText(null), '');
+  assert.equal(await embedTitle(''), null);
+  const title = await embedTitle('Compact coffee maker');
+  assert.equal(title.length, EMBEDDING_DIMENSIONS);
+  near(Math.hypot(...title), 1, 1e-5);
+
+  const calls = [];
+  const saved = await embedCatalogTitle({
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      return { data: true, error: null };
+    },
+  }, { asin: 'B012345678', title: 'Compact coffee maker' });
+  assert.equal(saved, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, 'save_catalog_title_embedding');
+  assert.equal(calls[0].args.p_asin, 'B012345678');
+  assert.equal(calls[0].args.p_title, 'Compact coffee maker');
+  const savedVector = JSON.parse(calls[0].args.p_embedding);
+  assert.equal(savedVector.length, EMBEDDING_DIMENSIONS);
+  near(Math.hypot(...savedVector), 1, 1e-5);
 });
 
 test('vector functions validate dimensions and normalize updates', () => {
