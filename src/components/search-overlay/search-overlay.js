@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { products } from "@/utils/shopScrollerData";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
@@ -14,13 +13,25 @@ const suggestions = [
   "Sustainable sneakers",
 ];
 
-export default function SearchOverlay({ onClose, onSelect }) {
+export default function SearchOverlay({ onClose, onSelect, products = [] }) {
   const [query, setQuery] = useState("");
-  const results = products.filter((product) =>
-    `${product.name} ${product.brand} ${product.category} ${product.tags.join(" ")} ${product.styles.join(" ")} ${product.colors.join(" ")}`
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+  const normalizedQuery = query.trim().toLowerCase();
+  const results = normalizedQuery
+    ? products.filter((product) =>
+        [
+          product.name,
+          product.brand,
+          product.category,
+          product.subcategory,
+          ...(product.hashtags || []),
+          ...(product.tags || []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery),
+      )
+    : [];
 
   useEffect(() => {
     const closeOnEscape = (event) => {

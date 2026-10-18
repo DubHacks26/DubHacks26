@@ -10,14 +10,14 @@ export function PreferenceFields({ value, onChange }) {
     onChange({ ...value, [key]: value[key].includes(item) ? value[key].filter(v => v !== item) : [...value[key], item] });
   }
   return <div className={styles.fields}>
-    <p className={styles.note}>Pick what you like and we’ll show those finds first. Categories guide your feed; only your price range limits what appears.</p>
+    <p className={styles.note}>Categories and price range help rank your feed. Price is a soft preference, so great finds outside your range can still appear.</p>
     {[["categories", categories]].map(([key, options]) => <fieldset key={key}>
       <legend>{key}</legend>
       <div className={styles.chips}>{options.map(option => <button key={option} type="button" aria-pressed={value[key].includes(option)} onClick={() => toggle(key, option)}>
         {option}
       </button>)}</div>
     </fieldset>)}
-    <fieldset><legend>Price range</legend><div className={styles.prices}>
+    <fieldset><legend>Usual price range (soft preference)</legend><div className={styles.prices}>
       <label>Minimum ($)<input type="number" min="0" step="1" required value={value.minPrice} onChange={e => onChange({ ...value, minPrice: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
       <label>Maximum ($)<input type="number" min={value.minPrice || 0} step="1" required value={value.maxPrice} onChange={e => onChange({ ...value, maxPrice: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
     </div></fieldset>

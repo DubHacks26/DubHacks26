@@ -1,14 +1,13 @@
-import { products } from "@/utils/shopScrollerData";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import styles from "./discover-insights.module.css";
 
-export default function DiscoverInsights({ onNavigate, saved, profile, onTune }) {
+export default function DiscoverInsights({ onNavigate, products, saved, profile, onTune }) {
   return (
     <aside className={styles.insights}>
       <TasteCard onOpen={onTune} profile={profile} />
-      <BudgetCard saved={saved} />
-      <FriendsCard onOpen={() => onNavigate("Friends")} />
+      <BudgetCard products={products} saved={saved} />
+      <FriendsCard onOpen={() => onNavigate("Friends")} products={products} />
       <div className={styles.tip}>
         <Icon filled name="zap" size={18} />
         <p>
@@ -23,7 +22,7 @@ export default function DiscoverInsights({ onNavigate, saved, profile, onTune })
 function TasteCard({ onOpen, profile }) {
   const p = profile.preferences;
   return <section className={`${styles.panel} ${styles.taste}`}>
-    <div className={styles.panelHead}><span><Icon name="sparkles" size={17} /> Your taste</span><small>Demo</small></div>
+    <div className={styles.panelHead}><span><Icon name="sparkles" size={17} /> Your taste</span><small>Live</small></div>
     <h3>{p.categories.length ? "Picked for your interests" : "Open to discovery"}</h3>
     <p>{profile.likes.length} likes shaping your feed · {profile.saved.length} wishlist finds</p>
     <div className={styles.tags}>{(p.categories.length ? p.categories : ["All categories"]).map(tag => <span key={tag}>{tag}</span>)}</div>
@@ -32,10 +31,10 @@ function TasteCard({ onOpen, profile }) {
   </section>;
 }
 
-function BudgetCard({ saved }) {
+function BudgetCard({ products, saved }) {
   const total = products
     .filter((product) => saved.includes(product.id))
-    .reduce((sum, product) => sum + product.price, 0);
+    .reduce((sum, product) => sum + (Number.isFinite(product.price) ? product.price : 0), 0);
 
   return (
     <section className={`${styles.panel} ${styles.budget}`}>
@@ -56,7 +55,7 @@ function BudgetCard({ saved }) {
   );
 }
 
-function FriendsCard({ onOpen }) {
+function FriendsCard({ onOpen, products }) {
   return (
     <section className={styles.panel}>
       <div className={styles.panelHead}>

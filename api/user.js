@@ -26,7 +26,22 @@ async function handleRecommendations(req, res) {
     console.error('Recommendation lookup failed:', error);
     return res.status(503).json({ error: 'Recommendations are temporarily unavailable.' });
   }
-  return res.json({ products: data || [] });
+  const candidates = (data || []).filter(product => Number.isFinite(product.similarity));
+  if (!candidates.length) return res.json({ products: [] });
+  const { data: details, error: detailsError } = await client.from('catalog_products')
+    .select('asin,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
+    .in('asin', candidates.map(product => product.asin));
+  if (detailsError) {
+    console.error('Recommendation metadata lookup failed:', detailsError);
+    return res.status(503).json({ error: 'Recommendation details are temporarily unavailable.' });
+  }
+  const detailsByAsin = new Map((details || []).map(product => [product.asin, product]));
+  return res.json({
+    products: candidates.map(product => ({
+      ...product,
+      ...detailsByAsin.get(product.asin),
+    })),
+  });
 }
 
 async function handleCatalog(req, res) {
@@ -37,8 +52,7 @@ async function handleCatalog(req, res) {
     return res.status(400).json({ error: 'Limit must be between 1 and 100.' });
   }
   const { data, error } = await client.from('catalog_products')
-    .select('asin,title,brand,summary,image_url,product_url,price_cents,rating,review_count,categories,hashtags,tags,last_seen_at')
-    .order('last_seen_at', { ascending: false })
+    .select('asin,title,brand,summary,image_url,product_url,price_cents,rating,review_count,categories,hashtags,tags,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
     .order('asin', { ascending: true })
     .limit(limit);
   if (error) {

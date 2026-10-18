@@ -1,84 +1,602 @@
-// Shared vocabulary: incoming hashtags map to these canonical values.
-export const categories = ['Electronics', 'Gaming', 'Fashion', 'Home', 'Beauty', 'Education'];
-export const styles = ['minimalist', 'sustainable', 'practical', 'aesthetic', 'premium', 'budget-friendly'];
-export const colors = ['neutral', 'white', 'black', 'pink', 'green', 'blue'];
-const aliases = { minimalism: 'minimalist', minimal: 'minimalist', technology: 'electronics', tech: 'electronics', books: 'education', kitchen: 'home', 'home-decor': 'home', 'food-&-kitchen': 'kitchen', 'warm-tones': 'neutral', neutrals: 'neutral', functional: 'practical' };
+export const categories = [
+  "Accessories",
+  "Audio & entertainment",
+  "Beauty & personal care",
+  "Clothing",
+  "Computer accessories",
+  "Fashion & accessories",
+  "Fitness & outdoors",
+  "Food",
+  "Footwear",
+  "Hobbies, toys & entertainment",
+  "Home & kitchen",
+  "Home decor & furniture",
+  "Kitchen & dining",
+  "Lifestyle fashion",
+  "Mobile electronics",
+  "Other technology",
+  "School Supplies",
+  "Tech & electronics",
+];
+
+export const defaultPreferences = {
+  categories: [],
+  minPrice: 20,
+  maxPrice: 150,
+};
+
+const legacyCategories = ["Home", "Electronics", "Gaming", "Fashion", "Beauty", "Education"];
+
+const legacyCategoryAliases = {
+  tech: "Electronics",
+  technology: "Electronics",
+  books: "Education",
+};
+
+const categoryGroups = {
+  Home: ["Fitness & outdoors", "Home & kitchen", "Home decor & furniture", "Kitchen & dining"],
+  Electronics: [
+    "Audio & entertainment",
+    "Computer accessories",
+    "Mobile electronics",
+    "Other technology",
+    "Tech & electronics",
+  ],
+  Fashion: ["Accessories", "Clothing", "Fashion & accessories", "Footwear", "Lifestyle fashion"],
+  Beauty: ["Beauty & personal care"],
+  Education: ["Hobbies, toys & entertainment", "School Supplies"],
+  Gaming: [],
+};
+
+const aliases = {
+  minimalism: "minimalist",
+  minimal: "minimalist",
+  technology: "tech",
+  books: "education",
+  "home-decor": "home",
+  neutrals: "neutral",
+  functional: "practical",
+};
+
+const stopWords = new Set([
+  "about", "and", "are", "for", "from", "with", "the", "this", "that",
+  "your", "you", "new", "set", "pack", "piece", "pieces", "inch", "inches",
+  "size", "color", "style", "edition", "women", "womens", "men", "mens",
+  "machine", "machines", "maker", "makers", "dispenser", "dispensers",
+  "gadget", "gadgets", "accessory", "accessories", "product", "products",
+]);
+
+const actionStrength = {
+  like: 1,
+  save: 0.5,
+  unsave: -0.5,
+  skip: -0.25,
+  show_less: -1,
+  unlike: -1,
+  too_expensive: -0.75,
+  less_category: -1,
+};
+
+const personalWeights = {
+  category: 0.1,
+  subcategory: 0.2,
+  hashtags: 0.35,
+  title: 0.35,
+};
+
+const overallWeights = {
+  personal: 0.65,
+  price: 0.15,
+  quality: 0.12,
+  popularity: 0.08,
+};
+
+function parseList(value) {
+  if (Array.isArray(value)) return value.filter((item) => typeof item === "string");
+  if (typeof value !== "string" || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => typeof item === "string")
+      : [];
+  } catch {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+}
+
 export function normalizeTag(value) {
-  const tag = String(value).trim().toLowerCase().replace(/^#+/, '').replace(/[\s_]+/g, '-');
+  const tag = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^#+/, "")
+    .replace(/[\s_]+/g, "-");
   return aliases[tag] || tag;
 }
-export function normalizeProduct(raw) {
-  const tags = [...new Set([...(raw.tags || []), ...(raw.hashtags || [])].map(normalizeTag))];
-  const category = categories.find(c => normalizeTag(c) === normalizeTag(raw.category)) || 'Home';
-  return { ...raw, category, image: raw.imageUrl || raw.image || '/product-placeholder.svg', tags,
-    styles: [...new Set([...(raw.styles || []), ...tags].map(normalizeTag).filter(t => styles.includes(t)))],
-    colors: [...new Set([...(raw.colors || []), ...tags].map(normalizeTag).filter(t => colors.includes(t)))] };
+
+function normalizeCategory(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  return categories.find((category) => normalizeTag(category) === normalizeTag(raw))
+    || legacyCategories.find((category) => normalizeTag(category) === normalizeTag(raw))
+    || legacyCategoryAliases[raw.toLowerCase()]
+    || null;
 }
-export const defaultPreferences = { categories: [], minPrice: 0, maxPrice: 300 };
+
+function categoryMatches(preference, candidate) {
+  const normalizedPreference = normalizeCategory(preference);
+  const normalizedCandidate = normalizeCategory(candidate);
+  if (!normalizedPreference || !normalizedCandidate) return false;
+  return normalizedPreference === normalizedCandidate
+    || (categoryGroups[normalizedPreference] || []).includes(normalizedCandidate);
+}
+
+export function normalizeProduct(raw = {}) {
+  const sourceMainCategory = raw.main_category || raw.mainCategory || null;
+  const sourceCategory = raw.category || sourceMainCategory || null;
+  const mainCategory = sourceMainCategory || sourceCategory;
+  const hashtags = [...new Set(
+    [...parseList(raw.hashtags), ...parseList(raw.tags)]
+      .map(normalizeTag)
+      .filter(Boolean),
+  )];
+  const rawPrice = raw.price_cents ?? raw.priceCents;
+  const price = Number.isFinite(Number(rawPrice))
+    ? Number(rawPrice) / 100
+    : Number.isFinite(Number(raw.price))
+      ? Number(raw.price)
+      : null;
+  const rating = raw.rating !== null && raw.rating !== undefined
+    && raw.rating !== "" && Number.isFinite(Number(raw.rating))
+    ? Number(raw.rating)
+    : null;
+  const reviewValue = raw.review_count ?? raw.reviewCount ?? raw.reviews;
+  const reviews = reviewValue !== null && reviewValue !== undefined
+    && reviewValue !== "" && Number.isFinite(Number(reviewValue))
+    ? Number(reviewValue)
+    : null;
+
+  return {
+    ...raw,
+    id: raw.asin ?? raw.id,
+    asin: raw.asin ?? raw.id,
+    name: raw.title || raw.name || "Untitled product",
+    description: raw.summary || raw.description || raw.title || raw.name || "",
+    category: normalizeCategory(sourceMainCategory)
+      || normalizeCategory(sourceCategory)
+      || sourceCategory
+      || null,
+    mainCategory,
+    subcategory: raw.subcategory || null,
+    hashtags,
+    tags: hashtags,
+    image: raw.image_url || raw.imageUrl || raw.image || "/product-placeholder.svg",
+    productUrl: raw.product_url || raw.productURL || raw.productUrl || null,
+    price,
+    rating,
+    reviews,
+    boughtInPastMonth: raw.bought_in_past_month || raw.boughtInPastMonth || null,
+    badge: raw.badge || null,
+    similarity: raw.similarity !== null && raw.similarity !== undefined
+      && raw.similarity !== "" && Number.isFinite(Number(raw.similarity))
+      ? Number(raw.similarity)
+      : null,
+  };
+}
+
 export function createProfile() {
-  return { preferences: { ...defaultPreferences }, likes: [], saved: [], skips: [], feedback: [], seen: [], onboarded: false };
+  return {
+    preferences: { ...defaultPreferences, categories: [] },
+    events: [],
+    likes: [],
+    saved: [],
+    skips: [],
+    feedback: [],
+    seen: [],
+    onboarded: false,
+  };
 }
+
+function normalizeEvent(event) {
+  if (
+    !event
+    || !Object.hasOwn(actionStrength, event.action)
+    || event.productId === undefined
+    || event.productId === null
+  ) return null;
+  return {
+    id: event.id ?? `${event.productId}:${event.action}:${event.createdAt ?? ""}`,
+    productId: event.productId,
+    action: event.action,
+    createdAt: event.createdAt || new Date().toISOString(),
+  };
+}
+
+function seenFromEvents(events) {
+  return [...new Set(
+    events
+      .filter((event) => ["like", "skip", "show_less", "too_expensive", "less_category"].includes(event.action))
+      .map((event) => event.productId),
+  )];
+}
+
+function rebuildProfile(profile, events, seen = profile.seen) {
+  const ordered = events
+    .map(normalizeEvent)
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  const states = new Map();
+  for (const event of ordered) {
+    if (event.action === "like" || event.action === "unlike") {
+      states.set(`${event.productId}:like`, event.action === "like");
+    }
+    if (event.action === "save" || event.action === "unsave") {
+      states.set(`${event.productId}:save`, event.action === "save");
+    }
+  }
+  return {
+    ...profile,
+    events: ordered,
+    likes: [...states].filter(([key, value]) => key.endsWith(":like") && value)
+      .map(([key]) => key.slice(0, -5)),
+    saved: [...states].filter(([key, value]) => key.endsWith(":save") && value)
+      .map(([key]) => key.slice(0, -5)),
+    skips: [...new Set(ordered.filter((event) => event.action === "skip").map((event) => event.productId))],
+    feedback: ordered.filter((event) =>
+      ["show_less", "too_expensive", "less_category"].includes(event.action)),
+    seen: [...new Set(seen)],
+  };
+}
+
 export function restoreProfile(raw) {
-  const result = createProfile();
-  if (!raw || typeof raw !== 'object') return result;
-  for (const key of ['likes', 'saved', 'skips', 'seen']) if (Array.isArray(raw[key])) result[key] = [...new Set(raw[key].filter(id => typeof id === 'string' || typeof id === 'number'))];
-  if (Array.isArray(raw.feedback)) result.feedback = raw.feedback.filter(f => f && ['style', 'price', 'category'].includes(f.reason) && f.productId != null);
-  const p = raw.preferences || {};
-  result.preferences.categories = Array.isArray(p.categories) ? [...new Set(p.categories.map(value => categories.find(c => normalizeTag(c) === normalizeTag(value))).filter(Boolean))] : [];
-  if (Number.isFinite(p.minPrice) && p.minPrice >= 0) result.preferences.minPrice = p.minPrice;
-  if (Number.isFinite(p.maxPrice) && p.maxPrice >= result.preferences.minPrice) result.preferences.maxPrice = p.maxPrice;
-  result.preferences.maxPrice = Math.max(result.preferences.minPrice, result.preferences.maxPrice);
-  result.onboarded = raw.onboarded === true;
-  return result;
-}
-export function matches(product, p) {
-  return product.price >= p.minPrice && product.price <= p.maxPrice;
-}
-export function score(product, profile, catalog) {
-  let value = 0;
-  const p = profile.preferences;
-  if (p.categories.includes(product.category)) value += 6;
-  for (const liked of catalog.filter(p => profile.likes.includes(p.id))) {
-    if (liked.category === product.category) value += 3;
-    value += product.styles.filter(s => liked.styles.includes(s)).length * 2;
+  const profile = createProfile();
+  if (!raw || typeof raw !== "object") return profile;
+  const preferences = raw.preferences && typeof raw.preferences === "object"
+    ? raw.preferences
+    : {};
+  const minPrice = Number(preferences.minPrice);
+  const maxPrice = Number(preferences.maxPrice);
+  profile.preferences = {
+    categories: Array.isArray(preferences.categories)
+      ? [...new Set(preferences.categories.map(normalizeCategory).filter(Boolean))]
+      : [],
+    minPrice: Number.isFinite(minPrice) && minPrice >= 0
+      ? minPrice
+      : defaultPreferences.minPrice,
+    maxPrice: Number.isFinite(maxPrice) && maxPrice >= minPrice
+      ? maxPrice
+      : defaultPreferences.maxPrice,
+  };
+  profile.onboarded = raw.onboarded === true;
+  if (Array.isArray(raw.events) && (raw.events.length > 0 || !(
+    raw.likes?.length || raw.saved?.length || raw.skips?.length || raw.feedback?.length
+  ))) {
+    const orderedEvents = raw.events.map(normalizeEvent).filter(Boolean);
+    const seen = Array.isArray(raw.seen) ? raw.seen : [];
+    return rebuildProfile(profile, orderedEvents, seen);
   }
-  for (const feedback of profile.feedback) {
-    const source = catalog.find(p => p.id === feedback.productId);
+
+  const legacyEvents = [];
+  const createdAt = new Date().toISOString();
+  for (const productId of Array.isArray(raw.likes) ? raw.likes : []) {
+    if (typeof productId === "string" || typeof productId === "number") {
+      legacyEvents.push({ productId, action: "like", createdAt });
+    }
+  }
+  for (const productId of Array.isArray(raw.saved) ? raw.saved : []) {
+    if (typeof productId === "string" || typeof productId === "number") {
+      legacyEvents.push({ productId, action: "save", createdAt });
+    }
+  }
+  for (const productId of Array.isArray(raw.skips) ? raw.skips : []) {
+    if (typeof productId === "string" || typeof productId === "number") {
+      legacyEvents.push({ productId, action: "skip", createdAt });
+    }
+  }
+  for (const feedback of Array.isArray(raw.feedback) ? raw.feedback : []) {
+    const action = feedback.reason === "price"
+      ? "too_expensive"
+      : feedback.reason === "category"
+        ? "less_category"
+        : "show_less";
+    legacyEvents.push({ productId: feedback.productId, action, createdAt: feedback.createdAt || createdAt });
+  }
+  return rebuildProfile(
+    profile,
+    legacyEvents,
+    Array.isArray(raw.seen) ? raw.seen : seenFromEvents(legacyEvents),
+  );
+}
+
+export function matches() {
+  return true;
+}
+
+function recency(event, now) {
+  const createdAt = Date.parse(event.createdAt);
+  if (!Number.isFinite(createdAt)) return 0;
+  const ageDays = Math.max(0, (now - createdAt) / 86_400_000);
+  return 2 ** (-ageDays / 30);
+}
+
+function evidenceFor(event, now) {
+  return actionStrength[event.action] * recency(event, now);
+}
+
+function featureAffinity(feature, candidate, profile, context) {
+  if (!candidate) return null;
+  let evidence = 0;
+  for (const event of profile.events) {
+    const source = context.productById.get(event.productId);
     if (!source) continue;
-    if (feedback.reason === 'category' && source.category === product.category) value -= 5;
-    if (feedback.reason === 'style') value -= product.styles.filter(s => source.styles.includes(s)).length * 4;
-    if (feedback.reason === 'price' && product.price >= source.price) value -= 4;
+    const values = feature === "hashtags"
+      ? source.hashtags || []
+      : feature === "category"
+        ? [source.mainCategory || source.category]
+        : [source[feature]];
+    if (values.some((value) => value && normalizeTag(value) === normalizeTag(candidate))) {
+      evidence += evidenceFor(event, context.now);
+    }
   }
-  return value;
+  if (feature === "category" && profile.preferences.categories.some(
+    (value) => categoryMatches(value, candidate),
+  )) evidence += 1;
+  return 0.5 + 0.5 * Math.tanh(evidence / 2);
 }
-export function getFeed(catalog, profile) {
-  return catalog.filter(p => matches(p, profile.preferences) && !profile.seen.includes(p.id))
-    .sort((a, b) => score(b, profile, catalog) - score(a, profile, catalog));
+
+function hashtagAffinity(product, profile, context) {
+  const tags = [...new Set(product.hashtags || [])];
+  const lexical = tags.length
+    ? tags.reduce((sum, tag) => sum + featureAffinity("hashtags", tag, profile, context), 0) / tags.length
+    : null;
+  const vector = Number.isFinite(product.similarity)
+    ? Math.max(0, Math.min(1, (product.similarity + 1) / 2))
+    : null;
+  if (lexical === null) return vector;
+  if (vector === null) return lexical;
+  return lexical * 0.7 + vector * 0.3;
 }
+
+function titleTokens(title) {
+  return new Set(
+    String(title || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(/\s+/)
+      .filter((token) => token.length > 2 && !stopWords.has(token)),
+  );
+}
+
+function titleSimilarity(a, b) {
+  if (!a.size || !b.size) return 0;
+  let intersection = 0;
+  for (const token of a) if (b.has(token)) intersection += 1;
+  return intersection / (a.size + b.size - intersection);
+}
+
+function titleAffinity(product, profile, context) {
+  const candidate = context.titleTokens.get(product.id);
+  if (!candidate?.size) return null;
+  let signedSimilarity = 0;
+  let totalEvidence = 0;
+  for (const event of profile.events) {
+    const source = context.productById.get(event.productId);
+    if (!source || source.id === product.id) continue;
+    const weight = evidenceFor(event, context.now);
+    signedSimilarity += weight * titleSimilarity(
+      candidate,
+      context.titleTokens.get(source.id) || new Set(),
+    );
+    totalEvidence += Math.abs(weight);
+  }
+  if (!totalEvidence) return 0.5;
+  return Math.max(0, Math.min(1, 0.5 + 0.5 * signedSimilarity / totalEvidence));
+}
+
+function weightedAvailableScore(parts) {
+  const available = parts.filter((part) => part.value !== null);
+  const totalWeight = available.reduce((sum, part) => sum + part.weight, 0);
+  if (!totalWeight) return 0.5;
+  return available.reduce((sum, part) => sum + part.value * part.weight / totalWeight, 0);
+}
+
+function personalScoreWithContext(product, profile, context) {
+  return weightedAvailableScore([
+    { value: featureAffinity("category", product.mainCategory || product.category, profile, context), weight: personalWeights.category },
+    { value: featureAffinity("subcategory", product.subcategory, profile, context), weight: personalWeights.subcategory },
+    { value: hashtagAffinity(product, profile, context), weight: personalWeights.hashtags },
+    { value: titleAffinity(product, profile, context), weight: personalWeights.title },
+  ]);
+}
+
+export function personalScore(product, profile, catalog, now = Date.now()) {
+  return personalScoreWithContext(product, profile, buildContext(catalog, now));
+}
+
+function priceScore(product, profile, context) {
+  if (!Number.isFinite(product.price)) return null;
+  const preferences = profile.preferences;
+  const min = Math.max(0, Number(preferences.minPrice) || 0);
+  let max = Math.max(min, Number(preferences.maxPrice) || min);
+  let weightedLogPrice = 0;
+  let priceEvidence = 0;
+  const latestLikes = new Map();
+  for (const event of profile.events) {
+    if (event.action === "like" && profile.likes.includes(event.productId)) {
+      latestLikes.set(event.productId, event);
+    }
+  }
+  for (const event of latestLikes.values()) {
+    const likedProduct = context.productById.get(event.productId);
+    if (!Number.isFinite(likedProduct?.price) || likedProduct.price <= 0) continue;
+    const weight = recency(event, context.now);
+    weightedLogPrice += Math.log(likedProduct.price) * weight;
+    priceEvidence += weight;
+  }
+  for (const event of profile.events) {
+    if (event.action !== "too_expensive") continue;
+    const rejectedProduct = context.productById.get(event.productId);
+    if (!Number.isFinite(rejectedProduct?.price) || rejectedProduct.price <= 0) continue;
+    const inferredMax = rejectedProduct.price * 0.8;
+    const weight = Math.abs(evidenceFor(event, context.now));
+    weightedLogPrice += Math.log(Math.max(inferredMax, 0.01)) * weight;
+    priceEvidence += weight;
+  }
+  if (priceEvidence) {
+    const learnedMax = Math.exp(weightedLogPrice / priceEvidence);
+    const confidence = priceEvidence / (priceEvidence + 3);
+    max = Math.max(min, Math.exp(
+      Math.log(Math.max(max, 0.01)) * (1 - confidence)
+      + Math.log(Math.max(learnedMax, 0.01)) * confidence,
+    ));
+  }
+  if (product.price >= min && product.price <= max) return 1;
+  const boundary = product.price < min ? min : max;
+  if (boundary <= 0) return 0.5;
+  return Math.exp(-0.5 * Math.abs(Math.log(Math.max(product.price, 0.01) / boundary)));
+}
+
+function meanRating(catalog) {
+  const ratings = catalog.map((product) => product.rating).filter(Number.isFinite);
+  return ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 4;
+}
+
+function qualityScore(product, ratingPrior) {
+  if (!Number.isFinite(product.rating)) return null;
+  const count = Math.max(0, product.reviews || 0);
+  const priorStrength = 100;
+  const smoothed = (count / (count + priorStrength)) * product.rating
+    + (priorStrength / (count + priorStrength)) * ratingPrior;
+  return Math.max(0, Math.min(1, smoothed / 5));
+}
+
+function popularityScore(product) {
+  let countScore = null;
+  if (typeof product.boughtInPastMonth === "string") {
+    const match = product.boughtInPastMonth.match(/([\d,.]+)\s*([kK])?\s*\+/);
+    if (match) {
+      const count = Number(match[1].replaceAll(",", "")) * (match[2] ? 1000 : 1);
+      if (Number.isFinite(count)) countScore = Math.min(1, Math.log1p(count) / Math.log1p(10_000));
+    }
+  }
+  const badgeScore = typeof product.badge === "string"
+    && /\b(best seller|amazon'?s choice)\b/i.test(product.badge)
+    ? 0.95
+    : null;
+  if (countScore === null && badgeScore === null) return null;
+  return weightedAvailableScore([
+    { value: countScore, weight: 0.75 },
+    { value: badgeScore, weight: 0.25 },
+  ]);
+}
+
+function buildContext(catalog, now) {
+  return {
+    productById: new Map(catalog.map((product) => [product.id, product])),
+    titleTokens: new Map(catalog.map((product) => [product.id, titleTokens(product.name)])),
+    ratingPrior: meanRating(catalog),
+    now,
+  };
+}
+
+function scoreWithContext(product, profile, context) {
+  return weightedAvailableScore([
+    { value: personalScoreWithContext(product, profile, context), weight: overallWeights.personal },
+    { value: priceScore(product, profile, context), weight: overallWeights.price },
+    { value: qualityScore(product, context.ratingPrior), weight: overallWeights.quality },
+    { value: popularityScore(product), weight: overallWeights.popularity },
+  ]);
+}
+
+export function score(product, profile, catalog, now = Date.now()) {
+  return scoreWithContext(product, profile, buildContext(catalog, now));
+}
+
+export function getFeed(catalog, profile, now = Date.now(), sourceCatalog = catalog) {
+  const context = buildContext([...new Map(
+    [...catalog, ...sourceCatalog].map((product) => [product.id, product]),
+  ).values()], now);
+  return catalog
+    .filter((product) => !profile.seen.includes(product.id))
+    .map((product) => ({ product, score: scoreWithContext(product, profile, context) }))
+    .sort((a, b) => b.score - a.score || String(a.product.id).localeCompare(String(b.product.id)))
+    .map(({ product }) => product);
+}
+
 export function explainProduct(product, profile, catalog) {
-  const related = catalog.find(p => profile.likes.includes(p.id) && p.id !== product.id && p.category === product.category && p.styles.some(s => product.styles.includes(s)));
-  if (related) return `Because you liked ${related.name}, which shares its ${product.styles.find(s => related.styles.includes(s))} style and ${product.category.toLowerCase()} category.`;
-  if (profile.preferences.categories.includes(product.category)) return `You selected ${product.category.toLowerCase()} in your preferences.`;
-  return 'Explore something new. This item is within your selected price range.';
+  const liked = profile.events
+    .filter((event) => event.action === "like" && profile.likes.includes(event.productId))
+    .map((event) => catalog.find((item) => item.id === event.productId))
+    .filter(Boolean)
+    .find((item) =>
+      (product.subcategory && item.subcategory === product.subcategory)
+      || product.hashtags?.some((tag) => item.hashtags?.includes(tag))
+      || [...titleTokens(product.name)].some((token) => titleTokens(item.name).has(token)),
+    );
+  if (liked && product.subcategory && liked.subcategory === product.subcategory) {
+    return `Because you liked another ${product.subcategory.toLowerCase()} item.`;
+  }
+  const sharedTag = liked && product.hashtags?.find((tag) => liked.hashtags?.includes(tag));
+  if (sharedTag) return `Because you liked another item tagged ${sharedTag.replaceAll("-", " ")}.`;
+  if (profile.preferences.categories.some(
+    (category) => categoryMatches(category, product.mainCategory || product.category),
+  )) {
+    return `You selected ${product.category.toLowerCase()} in your feed preferences.`;
+  }
+  return "This item matches your preferences and product feedback.";
 }
+
 export function productChips(product) {
-  const price = !Number.isFinite(product.price) ? null
-    : product.price < 50 ? 'Under $50'
-      : product.price < 100 ? 'Under $100' : `$${product.price}`;
-  return [product.category, price].filter(Boolean);
+  const price = Number.isFinite(product.price)
+    ? product.price < 50
+      ? "Under $50"
+      : product.price < 100
+        ? "Under $100"
+        : `$${product.price}`
+    : null;
+  return [
+    product.category,
+    product.subcategory,
+    ...(product.hashtags || []).slice(0, 2).map((tag) => `#${tag}`),
+    price,
+  ].filter(Boolean);
 }
-export function recordAction(profile, productId, action) {
-  const add = list => list.includes(productId) ? list : [...list, productId];
-  const next = { ...profile, seen: add(profile.seen) };
-  if (action === 'like') next.likes = add(profile.likes);
-  else if (action === 'skip') next.skips = add(profile.skips);
-  else next.feedback = [...profile.feedback, { productId, reason: action, createdAt: new Date().toISOString() }];
-  return next;
+
+export function recordAction(profile, productId, action, event = {}) {
+  if (!Object.hasOwn(actionStrength, action)) return profile;
+  const normalized = normalizeEvent({
+    ...event,
+    productId,
+    action,
+    createdAt: event.createdAt || new Date().toISOString(),
+  });
+  if (!normalized) return profile;
+  const seen = ["like", "skip", "show_less", "too_expensive", "less_category"].includes(action)
+    ? [...profile.seen, productId]
+    : profile.seen;
+  return rebuildProfile(profile, [...profile.events, normalized], seen);
+}
+
+export function removeAction(profile, eventId) {
+  const events = profile.events.filter((event) => event.id !== eventId);
+  const stillSeen = new Set(seenFromEvents(events));
+  return rebuildProfile(
+    profile,
+    events,
+    profile.seen.filter((productId) => stillSeen.has(productId)),
+  );
 }
 
 export function captureFeedState(profile) {
-  return { likes: profile.likes, skips: profile.skips, feedback: profile.feedback, seen: profile.seen };
+  return {
+    events: profile.events,
+    likes: profile.likes,
+    saved: profile.saved,
+    skips: profile.skips,
+    feedback: profile.feedback,
+    seen: profile.seen,
+  };
 }
+
 export function undoFeedAction(profile, previous) {
   return { ...profile, ...previous };
 }

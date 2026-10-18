@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { products } from "@/utils/shopScrollerData";
 import { explainProduct, productChips } from "@/utils/feed.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
@@ -9,7 +8,7 @@ import ProductImage from "@/components/product-image/product-image";
 import DiscoverInsights from "@/components/discover-insights/discover-insights";
 import styles from "./discover.module.css";
 
-export default function Discover({ product, nextProduct, profile, noMatches, canUndo, onTune, onFeedback, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved }) {
+export default function Discover({ products, product, nextProduct, profile, noMatches, canUndo, onTune, onFeedback, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved }) {
   const gesture = useRef(null);
   // motion is "" | "skip" | "like"
   const [motion, setMotion] = useState("");
@@ -42,7 +41,7 @@ export default function Discover({ product, nextProduct, profile, noMatches, can
       {!product ? <div className={styles.empty} role="status">
         <Icon name={noMatches ? "search" : "check"} size={32} />
         <h2>{noMatches ? "No finds match just yet." : "You’re all caught up."}</h2>
-        <p>{noMatches ? "No products in our demo catalog fit this price range. Try widening your budget." : "You’ve seen every find within your price range. Revisit them or widen your budget."}</p>
+        <p>{noMatches ? "No products are available in the catalog yet. Try refreshing in a moment." : "You’ve seen every find in this round. Revisit them to start a new scroll."}</p>
         <Button onClick={onTune}>Adjust preferences</Button>
         <Button variant="secondary" onClick={noMatches ? onReset : onRevisit}>{noMatches ? "Reset filters" : "Revisit finds"}</Button>
         {canUndo && <Button variant="ghost" onClick={onUndo}>Undo last action</Button>}
@@ -94,6 +93,6 @@ export default function Discover({ product, nextProduct, profile, noMatches, can
         </div><p>Feedback adjusts ranking. Your chosen filters stay the same.</p></details>
       </>}
     </section>
-    <DiscoverInsights onNavigate={onNavigate} saved={saved} profile={profile} onTune={onTune} />
+    <DiscoverInsights onNavigate={onNavigate} products={products} saved={saved} profile={profile} onTune={onTune} />
   </div>;
 }

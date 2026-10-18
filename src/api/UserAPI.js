@@ -32,6 +32,21 @@ async function getCatalogProducts(limit = 100, { refresh = false } = {}) {
   }
 }
 
+async function getRecommendations(limit = 100, exclude = []) {
+  const response = await AxiosInstance.get("/user/recommendations", {
+    params: {
+      limit,
+      exclude: exclude.filter(id => /^[A-Z0-9]{10}$/.test(String(id))).slice(0, 500).join(","),
+    },
+  });
+  return response.data?.products || [];
+}
+
+async function recordPositiveInteraction(asin, action) {
+  const response = await AxiosInstance.post("/user/interactions", { asin, action });
+  return response.data?.applied === true;
+}
+
 async function signIn(credentials) {
   const response = await AxiosInstance.post("/auth/signin", credentials);
   await persistSession(response.data?.session);
@@ -79,7 +94,17 @@ async function signOut() {
   }
 }
 
-export { getCatalogProducts, getCurrentSession, getUserInfo, onAuthStateChange, signIn, signOut, signUp };
+export {
+  getCatalogProducts,
+  getRecommendations,
+  getCurrentSession,
+  getUserInfo,
+  onAuthStateChange,
+  recordPositiveInteraction,
+  signIn,
+  signOut,
+  signUp,
+};
 
 export async function requestPasswordReset(email) {
   const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, {

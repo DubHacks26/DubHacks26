@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getCatalogProducts } from "@/api/UserAPI";
-import { navItems, products } from "@/utils/shopScrollerData";
-import { getFeed, matches, recordAction, defaultPreferences, captureFeedState, undoFeedAction } from "@/utils/feed.mjs";
+import { getCatalogProducts, getRecommendations } from "@/api/UserAPI";
+import { navItems } from "@/utils/shopScrollerData";
+import { getFeed, matches, defaultPreferences } from "@/utils/feed.mjs";
 import { normalizeCatalogProduct } from "@/utils/catalogProduct.mjs";
 import FeedPreferences from "@/components/feed-preferences/feed-preferences";
 import Discover from "@/components/discover/discover";
@@ -21,6 +21,16 @@ import Brand from "@/components/brand/brand";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./shop-scroller.module.css";
+
+function errorMessage(error, fallback) {
+  const responseError = error?.response?.data?.error;
+  if (typeof responseError === "string") return responseError;
+  if (responseError && typeof responseError === "object") {
+    if (typeof responseError.reason === "string") return responseError.reason;
+    if (typeof responseError.message === "string") return responseError.message;
+  }
+  return typeof error?.message === "string" ? error.message : fallback;
+}
 
 function Sidebar({ page, username, count, catalogSize }) {
   const hasLikes = count > 0;
@@ -87,7 +97,16 @@ function Topbar({ onSearch, onMessages, scrollMode }) {
   );
 }
 
-export default function AppShell({ profile, setProfile, user, initialPage = "Discover" }) {
+export default function AppShell({
+  onPersistAction,
+  onUndoAction,
+  onUpdatePreferences,
+  historyProducts,
+  profile,
+  setProfile,
+  user,
+  initialPage = "Discover",
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const page = navItems.find(item => item.href === pathname)?.label || initialPage;
@@ -95,11 +114,29 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [catalogReload, setCatalogReload] = useState(0);
+  const [recommendationProducts, setRecommendationProducts] = useState([]);
   const saved = profile.saved;
-  const feed = getFeed(products, profile);
+  const productById = new Map((catalogProducts || []).map(product => [product.id, product]));
+  for (const recommended of recommendationProducts) {
+    const catalogProduct = productById.get(recommended.id);
+    productById.set(recommended.id, {
+      ...catalogProduct,
+      ...recommended,
+      similarity: recommended.similarity,
+    });
+  }
+  const products = [...productById.values()];
+  const sourceProducts = historyProducts.map(normalizeCatalogProduct);
+  const feed = getFeed(products, profile, Date.now(), [...products, ...sourceProducts]);
+  const searchableProducts = getFeed(
+    products,
+    { ...profile, seen: [] },
+    Date.now(),
+    [...products, ...sourceProducts],
+  );
   const currentProduct = feed[0];
   const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
-  const scrollProducts = catalogProducts || [];
+  const scrollProducts = feed;
   const [tuning, setTuning] = useState(false);
 
   const [lastSwipe, setLastSwipe] = useState(null);
@@ -114,52 +151,101 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
 
   useEffect(() => {
     let cancelled = false;
-    getCatalogProducts(100, { refresh: catalogReload > 0 })
-      .then(rows => {
+    Promise.all([
+      getCatalogProducts(100, { refresh: catalogReload > 0 }),
+      getRecommendations(100, profile.seen),
+    ])
+      .then(([rows, recommendations]) => {
         if (cancelled) return;
         setCatalogProducts(rows.map(normalizeCatalogProduct));
+        setRecommendationProducts(recommendations.map(normalizeCatalogProduct));
       })
       .catch(error => {
         if (cancelled) return;
         setCatalogProducts([]);
-        setCatalogError(error.response?.data?.error || "The product catalog could not be loaded.");
+        setCatalogError(errorMessage(error, "The product catalog could not be loaded."));
       })
       .finally(() => {
         if (!cancelled) setCatalogLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user.id, catalogReload]);
+  }, [user.id, catalogReload, profile.events.length]);
 
   const showToast = (message) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
   };
 
+  const persistAction = (product, action, successMessage, onSaved) => {
+    const asin = product.asin || product.id;
+    if (!/^[A-Z0-9]{10}$/.test(String(asin))) {
+      showToast("This demo product isn’t in the catalog, so its action can’t be saved to your account.");
+      return Promise.resolve(null);
+    }
+    return onPersistAction(asin, action)
+      .then(event => {
+        if (event.embeddingError || event.embeddingApplied === false) {
+          showToast("Action saved. Vector learning is temporarily unavailable; other feedback still guides your feed.");
+        } else {
+          showToast(successMessage);
+        }
+        onSaved?.(event);
+        return event;
+      })
+      .catch(error => {
+        showToast(`Could not save this action: ${error.message}`);
+        return null;
+      });
+  };
+
   const toggleSaved = (product) => {
     const isAdding = !saved.includes(product.id);
-    setProfile(current => ({ ...current, saved: isAdding ? [...current.saved, product.id] : current.saved.filter(id => id !== product.id) }));
-    showToast(isAdding ? `${product.name} saved` : `${product.name} removed`);
+    return persistAction(
+      product,
+      isAdding ? "save" : "unsave",
+      isAdding ? `${product.name} saved` : `${product.name} removed`,
+    );
   };
 
   const act = (action) => {
     if (!currentProduct) return;
-    // Save only feed-related fields so Undo cannot roll back a later bookmark.
-    setLastSwipe(captureFeedState(profile));
-    setProfile(current => recordAction(current, currentProduct.id, action));
-    showToast(action === "like" ? "Liked. More finds like this, without adding to your wishlist." : action === "skip" ? "Skipped for now." : "Feedback noted. Similar finds will rank lower. Undo is available.");
+    const storedAction = action === "price"
+      ? "too_expensive"
+      : action === "category"
+        ? "less_category"
+        : action;
+    persistAction(
+      currentProduct,
+      storedAction,
+      action === "like"
+        ? "Liked. Your feed will learn from this."
+        : action === "skip"
+          ? "Skipped. Your feed will learn from this."
+          : "Feedback noted. Similar finds will rank lower.",
+      event => setLastSwipe(event),
+    );
   };
   // Discover now passes "like" or "skip" directly (swipe up = skip, heart = like).
   const swipe = direction => act(direction);
 
   const heartFromScroll = (product) => {
     const wasLiked = profile.likes.includes(product.id);
-    if (wasLiked) {
-      setProfile(current => ({ ...current, likes: current.likes.filter(id => id !== product.id) }));
-      showToast(`${product.name} removed from your hearts`);
-    } else {
-      setProfile(current => recordAction(current, product.id, "like"));
-      showToast(`${product.name} hearted`);
-    }
+    persistAction(
+      product,
+      wasLiked ? "unlike" : "like",
+      wasLiked ? `${product.name} removed from your hearts` : `${product.name} hearted`,
+    );
+  };
+
+  const resetPreferences = () => {
+    onUpdatePreferences({ ...defaultPreferences, categories: [] })
+      .then(() => {
+        setProfile(current => ({ ...current, seen: [] }));
+        setLastSwipe(null);
+        setCatalogReload(current => current + 1);
+        showToast("Feed preferences reset");
+      })
+      .catch(error => showToast(`Could not reset preferences: ${error.message}`));
   };
 
   useEffect(() => {
@@ -175,9 +261,12 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
 
   const undoSwipe = () => {
     if (!lastSwipe) return;
-    setProfile(current => undoFeedAction(current, lastSwipe));
-    setLastSwipe(null);
-    showToast("Last feed action undone");
+    onUndoAction(lastSwipe.id)
+      .then(() => {
+        setLastSwipe(null);
+        showToast("Last feed action undone");
+      })
+      .catch(error => showToast(`Could not undo this action: ${error.message}`));
   };
 
   const shareProduct = async (product) => {
@@ -198,14 +287,19 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
     content = (
       <Discover
         product={currentProduct}
+        products={products}
         nextProduct={feed[1]}
         profile={profile}
         noMatches={matchingCount === 0}
         canUndo={Boolean(lastSwipe)}
         onTune={() => setTuning(true)}
         onFeedback={act}
-        onRevisit={() => { setProfile(current => ({ ...current, seen: [] })); setLastSwipe(null); }}
-        onReset={() => { setProfile(current => ({ ...current, preferences: { ...defaultPreferences }, seen: [] })); setLastSwipe(null); }}
+        onRevisit={() => {
+          setProfile(current => ({ ...current, seen: [] }));
+          setLastSwipe(null);
+          setCatalogReload(current => current + 1);
+        }}
+        onReset={resetPreferences}
         onDetails={(product, type) => setDrawer({ product, type })}
         onNavigate={navigateTo}
         onSave={toggleSaved}
@@ -220,6 +314,7 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
       <ProductScroll
         onDetails={(product, type) => setDrawer({ product, type })}
         onHeart={heartFromScroll}
+        onSkip={product => persistAction(product, "skip", "Skipped. Your feed will learn from this.")}
         onSave={toggleSaved}
         onShare={shareProduct}
         loading={catalogLoading}
@@ -237,9 +332,9 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
   else if (page === "Missions")
     content = <Missions onDiscover={() => navigateTo("Discover")} />;
   else if (page === "Collections")
-    content = <Collections catalogProducts={catalogProducts || []} onSave={toggleSaved} saved={saved} onDiscover={() => navigateTo("Discover")} />;
+    content = <Collections catalogProducts={products} onSave={toggleSaved} saved={saved} onDiscover={() => navigateTo("Discover")} />;
   else if (page === "Budget")
-    content = <Budget catalogProducts={catalogProducts || []} onRemove={toggleSaved} saved={saved} />;
+    content = <Budget catalogProducts={products} onRemove={toggleSaved} saved={saved} />;
   else if (page === "Friends") content = <Friends />;
   else content = <Profile profile={profile} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} onTune={() => setTuning(true)} />;
 
@@ -271,8 +366,13 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
         ))}
       </nav>
       {tuning && <FeedPreferences preferences={profile.preferences} onClose={() => setTuning(false)} onApply={preferences => {
-        setProfile(current => ({ ...current, preferences, seen: [] }));
-        setLastSwipe(null); setTuning(false); showToast("Preferences updated. Your feed is ready.");
+        onUpdatePreferences(preferences)
+          .then(() => {
+            setProfile(current => ({ ...current, seen: [] }));
+            setCatalogReload(current => current + 1);
+            setLastSwipe(null); setTuning(false); showToast("Preferences updated. Your feed is ready.");
+          })
+          .catch(error => showToast(`Could not save preferences: ${error.message}`));
       }} />}
       {drawer && (
         <ProductDrawer
@@ -285,6 +385,7 @@ export default function AppShell({ profile, setProfile, user, initialPage = "Dis
       {searchOpen && (
         <SearchOverlay
           onClose={() => setSearchOpen(false)}
+          products={searchableProducts}
           onSelect={(product) => {
             setDrawer({ product, type: "details" });
             setSearchOpen(false);

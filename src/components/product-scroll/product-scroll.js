@@ -28,6 +28,7 @@ export default function ProductScroll({
   saved,
   onDetails,
   onHeart,
+  onSkip,
   onSave,
   onShare,
   loading = false,
@@ -35,6 +36,7 @@ export default function ProductScroll({
   onRetry,
 }) {
   const [cursor, setCursor] = useState(0);
+  const [activeId, setActiveId] = useState(null);
   const [drag, setDrag] = useState({ axis: "", x: 0, y: 0 });
   const [heartPulse, setHeartPulse] = useState(false);
   const [exitSwipe, setExitSwipe] = useState(null);
@@ -53,7 +55,8 @@ export default function ProductScroll({
   const suppressCardClick = useRef(false);
   const viewportRef = useRef(null);
   const productCount = products.length;
-  const index = clamp(cursor, 0, Math.max(productCount - 1, 0));
+  const activeIndex = activeId === null ? -1 : products.findIndex(item => item.id === activeId);
+  const index = activeIndex >= 0 ? activeIndex : clamp(cursor, 0, Math.max(productCount - 1, 0));
   const product = products[index];
   const isLiked = product ? liked.includes(product.id) : false;
   useEffect(() => () => {
@@ -71,6 +74,10 @@ export default function ProductScroll({
     boundaryTimer.current = window.setTimeout(() => setBoundaryMessage(""), 1500);
   };
 
+  useEffect(() => {
+    if (product && activeId !== product.id) setActiveId(product.id);
+  }, [product, activeId]);
+
   const moveTo = (nextIndex) => {
     if (exitSwipe) setExitSwipe(null);
     const clamped = clamp(nextIndex, 0, productCount - 1);
@@ -79,11 +86,15 @@ export default function ProductScroll({
       return;
     }
     setCursor(clamped);
+    setActiveId(products[clamped].id);
     setDrag({ axis: "", x: 0, y: 0 });
   };
 
   const previous = () => moveTo(index - 1);
-  const next = () => moveTo(index + 1);
+  const next = () => {
+    if (index < productCount - 1 && product) onSkip?.(product);
+    moveTo(index + 1);
+  };
   const heart = () => {
     if (!product || exitSwipe) return;
     onHeart(product);

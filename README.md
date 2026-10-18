@@ -137,8 +137,32 @@ Authenticated Express routes (Bearer Supabase access token):
   (or `"save"`) updates one interest atomically. Repeated positive events for
   the same product are ignored, and products without embeddings are skipped.
 
-The UI remains unchanged; it can call these routes when the catalog feed is
-connected. Interest similarity and learning rate live in
+The Discover and Scroll experiences call these routes. The feed ranks products
+using four personal signals—main category (10%), subcategory (20%), hashtags
+(35%), and title-word overlap (35%)—then blends that score with soft price fit
+(15%), smoothed review quality (12%), and popularity (8%), including best-seller
+badges and recent purchase counts. Missing catalog signals are omitted and the
+available weights are renormalized. Price is not a hard cutoff.
+Onboarding and feed preferences use the catalog's 18 populated `main_category`
+labels; legacy broad selections such as Home or Electronics remain supported.
+
+Hashtag matching combines direct interaction history with the existing
+384-dimensional hashtag embedding similarity when vectors are available. The
+title score is lexical word overlap, not title embeddings. Product actions are
+saved per account in `product_interactions`; preferences are saved in
+`user_feed_preferences`. Likes and saves update the separate five-slot positive
+interest model, while skips, unlikes, and feedback remain explicit weighted
+events for local ranking. Interaction influence decays with a 30-day half-life.
+Already-seen products are excluded only for the current session; their feedback
+continues to personalize later sessions.
+
+Run `npm run supabase:push` to apply any pending local migration, including
+`20261018030000_feed_feedback_actions.sql`, which adds the UI's additional
+feedback action types. Run `npm run backfill:embeddings` to make the vector
+similarity contribution available for products whose hashtag embeddings are
+still null. The title-word baseline works without those vectors.
+
+Interest similarity and learning rate live in
 `lib/recommendation-config.cjs`.
 
 Run `npm test` for vector, real-model, and route tests. After applying the
