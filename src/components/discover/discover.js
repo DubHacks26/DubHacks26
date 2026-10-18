@@ -11,6 +11,7 @@ import styles from "./discover.module.css";
 
 export default function Discover({ product, nextProduct, profile, noMatches, canUndo, onTune, onFeedback, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved }) {
   const gesture = useRef(null);
+  // motion is "" | "skip" | "like"
   const [motion, setMotion] = useState("");
   useEffect(() => {
     if (!motion) return;
@@ -18,11 +19,14 @@ export default function Discover({ product, nextProduct, profile, noMatches, can
     return () => window.clearTimeout(timer);
   }, [motion, onSwipe]);
   const swipe = direction => { if (product && !motion) setMotion(direction); };
+  const goBack = () => { if (canUndo && !motion) onUndo(); };
   useEffect(() => {
     const handleKey = event => {
       if (document.querySelector('dialog[open], [role="dialog"]') || event.target.closest?.('input, textarea, button, select, summary, [contenteditable]')) return;
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        event.preventDefault(); swipe(event.key === "ArrowLeft" ? "left" : "right");
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+        if (event.key === "ArrowUp") swipe("skip"); // up: next card
+        else goBack();                               // down: previous card (undo)
       }
     };
     window.addEventListener("keydown", handleKey);
@@ -56,12 +60,15 @@ export default function Discover({ product, nextProduct, profile, noMatches, can
                 const start = gesture.current; gesture.current = null;
                 if (!start) return;
                 const dx = event.clientX - start.x, dy = event.clientY - start.y;
-                if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) swipe(dx > 0 ? "right" : "left");
+                if (Math.abs(dy) > 70 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+                  if (dy < 0) swipe("skip"); // swiped up: next card
+                  else goBack();             // swiped down: previous card (undo)
+                }
               }}>
 
               <ProductImage alt={product.name} src={product.image} />
               <span className={styles.category}>{product.category}</span>
-              {motion && <div className={`${styles.stamp} ${styles[motion]}`}><Icon name={motion === "right" ? "heart" : "x"} />{motion === "right" ? "Liked" : "Skipped"}</div>}
+              {motion && <div className={`${styles.stamp} ${styles[motion]}`}><Icon name={motion === "like" ? "heart" : "x"} />{motion === "like" ? "Liked" : "Skipped"}</div>}
             </div>
             <div className={styles.copy}>
               <div className={styles.brandRow}><span>{product.brand}</span><button type="button" disabled={Boolean(motion)} aria-label={`${isSaved ? "Unsave" : "Save"} ${product.name}`} aria-pressed={isSaved} className={isSaved ? styles.saved : ""} onClick={() => onSave(product)}><Icon filled={isSaved} name="bookmark" size={19} /></button></div>
@@ -76,12 +83,12 @@ export default function Discover({ product, nextProduct, profile, noMatches, can
         </div>
         <div className={styles.controls}>
           <Button aria-label="Undo last feed action" disabled={!canUndo || Boolean(motion)} onClick={onUndo} variant="icon"><Icon name="rotate" size={18} /></Button>
-          <Button aria-label="Skip product" disabled={Boolean(motion)} className={styles.nope} onClick={() => swipe("left")} variant="icon"><Icon name="x" size={27} /></Button>
-          <Button aria-label="Like product, show more like this" disabled={Boolean(motion)} className={styles.love} onClick={() => swipe("right")} variant="icon"><Icon filled name="heart" size={26} /></Button>
+          <Button aria-label="Skip product" disabled={Boolean(motion)} className={styles.nope} onClick={() => swipe("skip")} variant="icon"><Icon name="x" size={27} /></Button>
+          <Button aria-label="Like product, show more like this" disabled={Boolean(motion)} className={styles.love} onClick={() => swipe("like")} variant="icon"><Icon filled name="heart" size={26} /></Button>
           <Button aria-label={isSaved ? "Remove from wishlist" : "Save to wishlist"} aria-pressed={isSaved} disabled={Boolean(motion)} onClick={() => onSave(product)} variant="icon"><Icon filled={isSaved} name="bookmark" size={18} /></Button>
           <Button aria-label="Share product" disabled={Boolean(motion)} onClick={() => onShare(product)} variant="icon"><Icon name="share" size={18} /></Button>
         </div>
-        <p className={styles.hint}><span>←</span> Skip <span>→</span> Like · Bookmark to save</p>
+        <p className={styles.hint}><span>↑</span> Skip <span>↓</span> Back · Heart to like</p>
         <details key={`feedback-${product.id}`} className={styles.feedback}><summary>Give feedback</summary><div>
           {[['price', 'Too expensive'], ['category', 'Less from this category']].map(([reason, label]) => <Button key={reason} variant="secondary" disabled={Boolean(motion)} onClick={() => onFeedback(reason)}>{label}</Button>)}
         </div><p>Feedback adjusts ranking. Your chosen filters stay the same.</p></details>
