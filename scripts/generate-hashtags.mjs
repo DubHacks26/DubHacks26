@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import nextEnv from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-import { embedCatalogProduct } from "../lib/product-embeddings.mjs";
+import { embedCatalogProduct, embedCatalogTitle } from "../lib/product-embeddings.mjs";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -346,7 +346,7 @@ async function readExistingProducts(supabase, asins) {
     const batch = asins.slice(index, index + SELECT_BATCH_SIZE);
     const { data, error } = await supabase
       .from(TABLE_NAME)
-      .select("asin, hashtags")
+      .select("asin, title, hashtags, title_embedding")
       .in("asin", batch);
     if (error) {
       fail(`Supabase could not read ${TABLE_NAME}. Apply the database migration first: ${error.message}`);
@@ -394,16 +394,28 @@ async function main() {
     if (options.dryRun) {
       console.log(`[dry run] ${product.asin}: ${hashtags.join(" ")}`);
     } else {
-      if (JSON.stringify(existingProducts.get(product.asin)?.hashtags) === JSON.stringify(hashtags)) {
+      const existing = existingProducts.get(product.asin);
+      if (JSON.stringify(existing?.hashtags) === JSON.stringify(hashtags)) {
         console.log(`[${completed}/${pendingProducts.length}] ${product.asin}: hashtags unchanged`);
-        continue;
+      } else {
+        await updateHashtags(supabase, product.asin, hashtags);
+        try {
+          await embedCatalogProduct(supabase, { asin: product.asin, hashtags });
+        } catch (error) {
+          // The migration leaves this product pending for the resumable backfill.
+          console.error(`Embedding ${product.asin} failed: ${error.message}`);
+        }
       }
-      await updateHashtags(supabase, product.asin, hashtags);
-      try {
-        await embedCatalogProduct(supabase, { asin: product.asin, hashtags });
-      } catch (error) {
-        // The migration leaves this product pending for the resumable backfill.
-        console.error(`Embedding ${product.asin} failed: ${error.message}`);
+      if (existing?.title_embedding === null) {
+        try {
+          await embedCatalogTitle(supabase, {
+            asin: product.asin,
+            title: existing.title,
+          });
+        } catch (error) {
+          // The title remains pending for the resumable backfill.
+          console.error(`Embedding title for ${product.asin} failed: ${error.message}`);
+        }
       }
       console.log(`[${completed}/${pendingProducts.length}] ${product.asin}: ${hashtags.join(" ")}`);
     }

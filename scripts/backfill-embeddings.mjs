@@ -2,7 +2,7 @@
 
 import nextEnv from '@next/env';
 import { createClient } from '@supabase/supabase-js';
-import { embedCatalogProduct } from '../lib/product-embeddings.mjs';
+import { embedCatalogProduct, embedCatalogTitle } from '../lib/product-embeddings.mjs';
 
 const { loadEnvConfig } = nextEnv;
 loadEnvConfig(process.cwd(), true);
@@ -23,10 +23,12 @@ if (limitArgument >= 0 && (!Number.isSafeInteger(limit) || limit < 1)) {
 let cursor = '';
 let scanned = 0;
 let written = 0;
+let hashtagEmbeddings = 0;
+let titleEmbeddings = 0;
 while (written < limit) {
   const { data, error } = await supabase.from('catalog_products')
-    .select('asin, hashtags')
-    .is('embedding', null)
+    .select('asin, title, hashtags, embedding, title_embedding')
+    .or('embedding.is.null,title_embedding.is.null')
     .gt('asin', cursor)
     .order('asin')
     .limit(100);
@@ -35,12 +37,22 @@ while (written < limit) {
   for (const product of data) {
     cursor = product.asin;
     scanned++;
-    if (!Array.isArray(product.hashtags) || product.hashtags.length === 0) continue;
-    if (await embedCatalogProduct(supabase, product)) {
-      written++;
-      console.log(`Embedded ${product.asin} (${written} written)`);
+    if (product.embedding === null && Array.isArray(product.hashtags)
+        && product.hashtags.length > 0 && written < limit) {
+      if (await embedCatalogProduct(supabase, product)) {
+        written++;
+        hashtagEmbeddings++;
+        console.log(`Embedded hashtags for ${product.asin} (${written} written)`);
+      }
+    }
+    if (product.title_embedding === null && written < limit) {
+      if (await embedCatalogTitle(supabase, product)) {
+        written++;
+        titleEmbeddings++;
+        console.log(`Embedded title for ${product.asin} (${written} written)`);
+      }
     }
     if (written >= limit) break;
   }
 }
-console.log(`Scanned ${scanned} missing vectors; wrote ${written}.`);
+console.log(`Scanned ${scanned} rows missing embeddings; wrote ${written} (${hashtagEmbeddings} hashtag, ${titleEmbeddings} title).`);
