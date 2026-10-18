@@ -350,7 +350,7 @@ function recency(event, now) {
   return 2 ** (-ageDays / 30);
 }
 
-function evidenceFor(event, now) {
+function evidenceFor(event, now, decay = recency(event, now)) {
   const strength = event.action === "skip"
     ? event.dwellMs === null || event.dwellMs < 2000
       ? -0.15
@@ -358,24 +358,12 @@ function evidenceFor(event, now) {
         ? 0.15
         : 0
     : actionStrength[event.action];
-  return strength * recency(event, now);
+  return strength * decay;
 }
 
 function featureAffinity(feature, candidate, profile, context) {
   if (!candidate) return null;
-  let evidence = 0;
-  for (const event of profile.events) {
-    const source = context.productById.get(event.productId);
-    if (!source) continue;
-    const values = feature === "hashtags"
-      ? source.hashtags || []
-      : feature === "category"
-        ? [source.mainCategory || source.category]
-        : [source[feature]];
-    if (values.some((value) => value && normalizeTag(value) === normalizeTag(candidate))) {
-      evidence += evidenceFor(event, context.now);
-    }
-  }
+  let evidence = context.featureEvidence[feature].get(normalizeTag(candidate)) ?? 0;
   if (feature === "category" && profile.preferences.categories.some(
     (value) => categoryMatches(value, candidate),
   )) evidence += 1;
@@ -413,16 +401,20 @@ function titleSimilarity(a, b) {
   ));
 }
 
-function titleAffinity(product, profile, context) {
+function titleAffinity(product, context) {
   if (!product.titleEmbedding) return null;
   let signedSimilarity = 0;
   let totalEvidence = 0;
-  for (const event of profile.events) {
-    const source = context.productById.get(event.productId);
+  // Repeated actions on one source need only one embedding comparison. Keep
+  // summing the event weights in their original order so scores stay stable.
+  const similarities = new Map();
+  for (const { source, weight } of context.events) {
     if (!source || !source.titleEmbedding || source.id === product.id) continue;
-    const similarity = titleSimilarity(product.titleEmbedding, source.titleEmbedding);
+    if (!similarities.has(source)) {
+      similarities.set(source, titleSimilarity(product.titleEmbedding, source.titleEmbedding));
+    }
+    const similarity = similarities.get(source);
     if (similarity === null) continue;
-    const weight = evidenceFor(event, context.now);
     signedSimilarity += weight * similarity;
     totalEvidence += Math.abs(weight);
   }
@@ -442,23 +434,22 @@ function personalScoreWithContext(product, profile, context) {
     { value: featureAffinity("category", product.mainCategory || product.category, profile, context), weight: personalWeights.category },
     { value: featureAffinity("subcategory", product.subcategory, profile, context), weight: personalWeights.subcategory },
     { value: hashtagAffinity(product, profile, context), weight: personalWeights.hashtags },
-    { value: titleAffinity(product, profile, context), weight: personalWeights.title },
+    { value: titleAffinity(product, context), weight: personalWeights.title },
   ]);
 }
 
 export function personalScore(product, profile, catalog, now = Date.now()) {
-  return personalScoreWithContext(product, profile, buildContext(catalog, now));
+  return personalScoreWithContext(product, profile, buildContext(catalog, profile, now));
 }
 
-function priceScore(product, profile, context) {
-  if (!Number.isFinite(product.price)) return null;
+function learnedPriceRange(profile, context) {
   const preferences = profile.preferences;
   const min = Math.max(0, Number(preferences.minPrice) || 0);
   let max = Math.max(min, Number(preferences.maxPrice) || min);
   let weightedLogPrice = 0;
   let priceEvidence = 0;
   const latestLikes = new Map();
-  for (const event of profile.events) {
+  for (const { event } of context.events) {
     if (event.action === "like" && profile.likes.includes(event.productId)) {
       latestLikes.set(event.productId, event);
     }
@@ -466,16 +457,16 @@ function priceScore(product, profile, context) {
   for (const event of latestLikes.values()) {
     const likedProduct = context.productById.get(event.productId);
     if (!Number.isFinite(likedProduct?.price) || likedProduct.price <= 0) continue;
-    const weight = recency(event, context.now);
+    const weight = context.recencyByEvent.get(event);
     weightedLogPrice += Math.log(likedProduct.price) * weight;
     priceEvidence += weight;
   }
-  for (const event of profile.events) {
+  for (const { event, weight: evidence } of context.events) {
     if (event.action !== "too_expensive") continue;
     const rejectedProduct = context.productById.get(event.productId);
     if (!Number.isFinite(rejectedProduct?.price) || rejectedProduct.price <= 0) continue;
     const inferredMax = rejectedProduct.price * 0.8;
-    const weight = Math.abs(evidenceFor(event, context.now));
+    const weight = Math.abs(evidence);
     weightedLogPrice += Math.log(Math.max(inferredMax, 0.01)) * weight;
     priceEvidence += weight;
   }
@@ -487,6 +478,13 @@ function priceScore(product, profile, context) {
       + Math.log(Math.max(learnedMax, 0.01)) * confidence,
     ));
   }
+  return { min, max };
+}
+
+function priceScore(product, profile, context) {
+  if (!Number.isFinite(product.price)) return null;
+  context.priceRange ??= learnedPriceRange(profile, context);
+  const { min, max } = context.priceRange;
   if (product.price >= min && product.price <= max) return 1;
   const boundary = product.price < min ? min : max;
   if (boundary <= 0) return 0.5;
@@ -529,10 +527,39 @@ function popularityScore(product) {
   ]);
 }
 
-function buildContext(catalog, now) {
+function buildContext(catalog, profile, now) {
+  const productById = new Map(catalog.map((product) => [product.id, product]));
+  const featureEvidence = { category: new Map(), subcategory: new Map(), hashtags: new Map() };
+  const recencyByEvent = new Map();
+  const events = profile.events.map((event) => {
+    const decay = recency(event, now);
+    recencyByEvent.set(event, decay);
+    const weight = evidenceFor(event, now, decay);
+    const source = productById.get(event.productId);
+    if (source) {
+      for (const [feature, values] of [
+        ["category", [source.mainCategory || source.category]],
+        ["subcategory", [source.subcategory]],
+        ["hashtags", source.hashtags || []],
+      ]) {
+        // A repeated tag on one product is still one piece of evidence per
+        // event, matching the previous `some` check.
+        const tags = new Set(values.filter(Boolean).map(normalizeTag));
+        for (const tag of tags) {
+          const evidence = featureEvidence[feature];
+          evidence.set(tag, (evidence.get(tag) ?? 0) + weight);
+        }
+      }
+    }
+    return { event, source, weight, decay };
+  });
   return {
-    productById: new Map(catalog.map((product) => [product.id, product])),
+    productById,
     ratingPrior: meanRating(catalog),
+    featureEvidence,
+    events,
+    recencyByEvent,
+    categoryDislikes: new Map(),
     now,
   };
 }
@@ -545,19 +572,19 @@ function scoreWithContext(product, profile, context) {
     { value: popularityScore(product), weight: overallWeights.popularity },
   ]);
   const productCategory = product.mainCategory || product.category;
-  const categoryDislikes = profile.events.reduce((total, event) => {
-    if (event.action !== "less_category") return total;
-    const source = context.productById.get(event.productId);
-    const sourceCategory = source?.mainCategory || source?.category;
-    return categoryMatches(sourceCategory, productCategory)
-      ? total + recency(event, context.now)
-      : total;
-  }, 0);
+  if (!context.categoryDislikes.has(productCategory)) {
+    context.categoryDislikes.set(productCategory, context.events.reduce((total, { event, source, decay }) => {
+      if (event.action !== "less_category") return total;
+      const sourceCategory = source?.mainCategory || source?.category;
+      return categoryMatches(sourceCategory, productCategory) ? total + decay : total;
+    }, 0));
+  }
+  const categoryDislikes = context.categoryDislikes.get(productCategory);
   const categoryPenalty = 0.35 * (1 - Math.exp(-2 * categoryDislikes));
   return Math.max(0, baseScore - categoryPenalty);
 }
 
-function explorationScore(product, profile, now) {
+function explorationHash(profile, now) {
   const day = Math.floor(now / dayInMs);
   const preferences = profile.preferences;
   const profileKey = [
@@ -567,27 +594,35 @@ function explorationScore(product, profile, now) {
     profile.events.map((event) =>
       `${event.productId}:${event.action}:${event.createdAt}`).join("|"),
   ].join(";");
-  const input = `${day};${profileKey};${product.id}`;
-  let hash = 2166136261;
+  return hashString(`${day};${profileKey};`);
+}
+
+function hashString(input, initialHash = 2166136261) {
+  let hash = initialHash;
   for (let index = 0; index < input.length; index += 1) {
     hash ^= input.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return (hash >>> 0) / 0x1_0000_0000;
+  return hash;
+}
+
+function explorationScore(product, prefixHash) {
+  return (hashString(String(product.id), prefixHash) >>> 0) / 0x1_0000_0000;
 }
 
 export function score(product, profile, catalog, now = Date.now()) {
-  return scoreWithContext(product, profile, buildContext(catalog, now));
+  return scoreWithContext(product, profile, buildContext(catalog, profile, now));
 }
 
 export function getFeed(catalog, profile, now = Date.now(), sourceCatalog = catalog) {
   const context = buildContext([...new Map(
     [...catalog, ...sourceCatalog].map((product) => [product.id, product]),
-  ).values()], now);
+  ).values()], profile, now);
+  const prefixHash = explorationHash(profile, now);
   return catalog
     .map((product) => {
       const score = scoreWithContext(product, profile, context);
-      const exploration = explorationScore(product, profile, now);
+      const exploration = explorationScore(product, prefixHash);
       const rankedScore = score * (1 - explorationWeight) + exploration * explorationWeight;
       return {
         product,

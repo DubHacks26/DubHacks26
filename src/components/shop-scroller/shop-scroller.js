@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
@@ -154,13 +154,14 @@ export default function AppShell({
   }, [catalogProducts, recommendationProducts]);
   const products = useMemo(() => [...productById.values()], [productById]);
   const sourceProducts = useMemo(() => historyProducts.map(normalizeCatalogProduct), [historyProducts]);
+  const rankingProfile = useDeferredValue(profile);
   // Seen products stay eligible but rank far below fresh products.
   const feed = useMemo(() => getFeed(
     products,
-    profile,
+    rankingProfile,
     feedTimestamp,
     [...products, ...sourceProducts],
-  ), [products, profile, feedTimestamp, sourceProducts]);
+  ), [products, rankingProfile, feedTimestamp, sourceProducts]);
   const currentProduct = feed[0];
   const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
   // Scroll consumes the same ranked feed as Discover. ProductScroll
@@ -168,6 +169,7 @@ export default function AppShell({
   const scrollProducts = feed;
   const [tuning, setTuning] = useState(false);
 
+  const likeIntents = useRef(new Map());
   const [lastSwipe, setLastSwipe] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [collectionPickerProduct, setCollectionPickerProduct] = useState(null);
@@ -224,19 +226,29 @@ export default function AppShell({
 
   useEffect(() => {
     let cancelled = false;
-    getCatalogProducts(100, { refresh: catalogReload > 0 })
-      .then(rows => {
-        if (cancelled) return;
-        setCatalogProducts(rows.map(normalizeCatalogProduct));
-        setCatalogError("");
-      })
-      .catch(error => {
-        if (cancelled) return;
-        setCatalogError(errorMessage(error, "The product catalog could not be loaded."));
-      })
-      .finally(() => {
-        if (!cancelled) setCatalogLoading(false);
-      });
+    let received = false;
+    let publishedSize = -1;
+    const publish = rows => {
+      if (cancelled) return;
+      received = true;
+      if (rows.length < publishedSize) return;
+      publishedSize = rows.length;
+      const normalized = rows.map(normalizeCatalogProduct);
+      // A small usable batch can render while the full catalog downloads.
+      setCatalogProducts(normalized);
+      setCatalogError("");
+      setCatalogLoading(false);
+    };
+    const options = { refresh: catalogReload > 0 };
+    Promise.allSettled([
+      getCatalogProducts(20, options).then(publish),
+      getCatalogProducts(100, options).then(publish),
+    ]).then(results => {
+      if (cancelled || received) return;
+      const failure = results.find(result => result.status === "rejected");
+      setCatalogError(errorMessage(failure?.reason, "The product catalog could not be loaded."));
+      setCatalogLoading(false);
+    });
     return () => { cancelled = true; };
   }, [user.id, catalogReload]);
 
@@ -294,6 +306,9 @@ export default function AppShell({
     }
     return onPersistAction(asin, action, context)
       .then(event => {
+        event.learning?.then(result => {
+          if (result.error) showToast("Action saved. Recommendation learning will catch up when the service is available.");
+        });
         if (event.embeddingError) {
           showToast("Action saved. Vector learning is temporarily unavailable; other feedback still guides your feed.");
         } else if (successMessage) {
@@ -408,13 +423,19 @@ export default function AppShell({
   };
   // Discover now passes "like" or "skip" directly (swipe up = skip, heart = like).
 
-  const heartFromScroll = (product) => {
-    const wasLiked = profile.likes.includes(product.id);
+  const heartFromScroll = (product, { onlyLike = false } = {}) => {
+    const previous = likeIntents.current.get(product.id);
+    const wasLiked = previous ? previous.liked : profile.likes.includes(product.id);
+    if (onlyLike && wasLiked) return;
+    const intent = { liked: !wasLiked };
+    likeIntents.current.set(product.id, intent);
     persistAction(
       product,
       wasLiked ? "unlike" : "like",
-      wasLiked ? `${product.name} removed from your hearts` : `${product.name} hearted`,
-    );
+      null,
+    ).finally(() => {
+      if (likeIntents.current.get(product.id) === intent) likeIntents.current.delete(product.id);
+    });
   };
 
   const dislikeProductCategory = (product) => {
@@ -520,8 +541,8 @@ export default function AppShell({
         onSkip={(product, context) => persistAction(product, "skip", null, undefined, context)}
         onSave={openCollectionPicker}
         onShare={shareProduct}
-        loading={catalogLoading}
-        error={catalogError}
+        loading={catalogLoading && scrollProducts.length === 0}
+        error={scrollProducts.length ? "" : catalogError}
         onRetry={() => {
           setCatalogLoading(true);
           setCatalogError("");

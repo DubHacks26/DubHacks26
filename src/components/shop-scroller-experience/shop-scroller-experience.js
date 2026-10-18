@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createProfile,
   recordAction,
@@ -15,6 +15,7 @@ import {
   saveFeedPreferences,
   saveProductAction,
 } from "@/utils/feed-persistence";
+import { createProductActionQueue, withPendingActions } from "@/utils/optimistic-actions.mjs";
 import { recordSemanticInteraction } from "@/api/UserAPI";
 import Landing from "@/components/landing/landing";
 import Onboarding from "@/components/onboarding/onboarding";
@@ -40,6 +41,9 @@ export default function ShopScrollerExperience({
 }) {
   const [stage, setStage] = useState("loading");
   const [profile, setProfile] = useState(createProfile);
+  const [pendingActions, setPendingActions] = useState([]);
+  const [enqueueAction] = useState(() => createProductActionQueue((asin, action, context) => saveProductAction(user.id, asin, action, context)));
+  const displayedProfile = useMemo(() => syncLikedCollection(withPendingActions(profile, pendingActions)), [profile, pendingActions]);
   const [historyProducts, setHistoryProducts] = useState([]);
   const [learningRevision, setLearningRevision] = useState(0);
   const [loadError, setLoadError] = useState("");
@@ -140,20 +144,25 @@ export default function ShopScrollerExperience({
   }
 
   async function persistAction(asin, action, context = {}) {
-    const event = await saveProductAction(user.id, asin, action, context);
-    // Commit visible feedback as soon as it is durable; learning is a second request.
-    setProfile((current) => syncLikedCollection(recordAction(current, asin, action, event)));
-    let embeddingApplied = null;
-    let embeddingError = null;
-    if (["like", "save", "skip", "too_expensive", "less_category"].includes(action)) {
-      try {
-        embeddingApplied = await recordSemanticInteraction(asin, action, context);
-        if (embeddingApplied) setLearningRevision(revision => revision + 1);
-      } catch (error) {
-        embeddingError = error.message;
-      }
+    const pending = { id: `pending-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`, productId: asin, action, dwellMs: context.dwellMs, createdAt: new Date().toISOString() };
+    setPendingActions(current => [...current, pending]);
+    let event;
+    try {
+      event = await enqueueAction(asin, action, context);
+      setProfile(current => syncLikedCollection(recordAction(current, asin, action, event)));
+    } finally {
+      // Success reconciles with the durable event; failure rolls back only this
+      // intent, preserving later clicks and changes to other products.
+      setPendingActions(current => current.filter(item => item.id !== pending.id));
     }
-    return { ...event, embeddingApplied, embeddingError };
+    const learning = ["like", "save", "skip", "too_expensive", "less_category"].includes(action)
+      ? recordSemanticInteraction(asin, action, context).then(applied => {
+          if (applied) setLearningRevision(revision => revision + 1);
+          return { applied };
+        }).catch(error => ({ error: error.message }))
+      : Promise.resolve({ applied: false });
+    // Saving and UI feedback do not wait for semantic/vector learning.
+    return { ...event, learning };
   }
 
   async function undoPersistedAction(eventId) {
@@ -184,7 +193,7 @@ export default function ShopScrollerExperience({
       onPersistAction={persistAction}
       onUndoAction={undoPersistedAction}
       onUpdatePreferences={updatePreferences}
-      profile={profile}
+      profile={displayedProfile}
       setProfile={setProfile}
       user={user}
       historyProducts={historyProducts}

@@ -18,6 +18,51 @@
   outline: none;
 }
 
+.desktopViewport {
+  touch-action: pan-y;
+}
+
+.touchSurface,
+.nativeSurface {
+  position: absolute;
+  inset: 0;
+}
+
+.nativeSurface {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  overflow-anchor: none;
+  touch-action: pan-y;
+  outline: none;
+}
+
+.nativeSurface::-webkit-scrollbar {
+  display: none;
+}
+
+.nativeSurface[data-dragging="true"] {
+  scroll-snap-type: none;
+}
+
+.nativeTrack {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+.reel.nativeReel {
+  position: relative;
+  height: var(--scroll-page-height, 100svh);
+  min-height: var(--scroll-page-height, 100svh);
+  flex: none;
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+}
+
 .searchExperience .viewport {
   inset-block-start: 98px;
 }
@@ -103,7 +148,7 @@
   position: absolute;
   inset: 0;
   height: 100%;
-  transition: transform 420ms cubic-bezier(0.22, 0.8, 0.2, 1);
+  transition: transform 280ms cubic-bezier(0.22, 0.8, 0.2, 1);
   will-change: transform;
 }
 
@@ -130,7 +175,6 @@
   aspect-ratio: 9 / 16;
   transform: translate(-50%, -50%);
   transition: width 420ms cubic-bezier(0.2, 0.8, 0.2, 1), height 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: width, height;
 }
 
 .card {
@@ -145,8 +189,8 @@
   color: #fff;
   cursor: pointer;
   transition:
-    transform 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
-    opacity 380ms ease;
+    transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
+    opacity 220ms ease;
   user-select: none;
   -webkit-user-select: none;
   will-change: transform;
@@ -159,8 +203,8 @@
 .cardExiting {
   pointer-events: none;
   transition:
-    transform 380ms cubic-bezier(0.2, 0.75, 0.2, 1),
-    opacity 300ms ease;
+    transform 220ms cubic-bezier(0.2, 0.75, 0.2, 1),
+    opacity 180ms ease;
 }
 .image {
   position: absolute;
@@ -170,23 +214,11 @@
   object-fit: cover;
   pointer-events: none;
 }
-.imageCover {
-  object-fit: cover;
-  transition: opacity 360ms ease;
-}
-.imageFull {
-  object-fit: contain;
-  opacity: 0;
-  transition: opacity 360ms ease;
-}
 .cardExpanded {
   border-radius: 28px;
 }
-.cardExpanded .imageCover {
-  opacity: 0;
-}
-.cardExpanded .imageFull {
-  opacity: 1;
+.cardExpanded .image {
+  object-fit: contain;
 }
 .cardExpanded .scrim,
 .cardExpanded .info,
@@ -455,6 +487,7 @@
   cursor: pointer;
   font-size: 0.67rem;
   line-height: 1.15;
+  touch-action: manipulation;
 }
 .action svg {
   color: var(--plum);
@@ -683,8 +716,6 @@
   .track,
   .frame,
   .card,
-  .imageCover,
-  .imageFull,
   .scrim,
   .info,
   .top,

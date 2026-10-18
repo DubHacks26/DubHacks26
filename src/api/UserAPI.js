@@ -42,18 +42,19 @@ async function getRecommendations(limit = 100, exclude = []) {
   return response.data?.products || [];
 }
 
-async function getProductsByAsins(asins = []) {
+async function getProductsByAsins(asins = [], { signal } = {}) {
   if (!asins.length) return [];
   const response = await AxiosInstance.get("/user/history-products", {
     params: { asins: asins.join(",") },
+    signal,
   });
   return response.data?.products || [];
 }
 
-async function searchCatalogProducts(query, { learn = false } = {}) {
+async function searchCatalogProducts(query, { learn = false, signal } = {}) {
   const response = learn
-    ? await AxiosInstance.post("/user/search", { query })
-    : await AxiosInstance.get("/user/search", { params: { query } });
+    ? await AxiosInstance.post("/user/search", { query }, { signal })
+    : await AxiosInstance.get("/user/search", { params: { query }, signal });
   return response.data;
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getProductsByAsins, searchCatalogProducts } from "@/api/UserAPI";
 import { normalizeCatalogProduct } from "@/utils/catalogProduct.mjs";
+import { loadSearchScrollProducts } from "@/utils/search-scroll-loading.mjs";
 import { getFeed } from "@/utils/feed.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
@@ -48,30 +49,26 @@ function SearchScrollContent({
 
     let active = true;
     const currentRequest = ++requestId.current;
-    searchCatalogProducts(query)
+    const controller = new AbortController();
+    const isActive = () => active && currentRequest === requestId.current;
+    searchCatalogProducts(query, { signal: controller.signal })
       .then(async (response) => {
-        const matches = Array.isArray(response.products) ? response.products : [];
-        const asins = matches
-          .map(product => product.asin || product.id)
-          .filter(asin => typeof asin === "string" && /^[A-Z0-9]{10}$/.test(asin));
-        const details = await getProductsByAsins(asins);
-        if (!active || currentRequest !== requestId.current) return;
-        const detailsByAsin = new Map(details.map(product => [product.asin, product]));
-        const products = matches.flatMap((match) => {
-          const detail = detailsByAsin.get(match.asin || match.id);
-          return detail ? [normalizeCatalogProduct(detail)] : [];
-        });
-        setResult({
-          query,
-          products,
-          error: "",
-          message: response.valid === false
-            ? "Try a more specific product search."
-            : "",
+        if (!isActive()) return;
+        await loadSearchScrollProducts(response.products, {
+          isActive,
+          loadDetails: asins => getProductsByAsins(asins, { signal: controller.signal }),
+          onProducts: products => setResult({
+            query,
+            products,
+            error: "",
+            message: response.valid === false
+              ? "Try a more specific product search."
+              : "",
+          }),
         });
       })
       .catch((error) => {
-        if (!active || currentRequest !== requestId.current) return;
+        if (!isActive()) return;
         setResult({
           query,
           products: [],
@@ -81,6 +78,7 @@ function SearchScrollContent({
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [query]);
 

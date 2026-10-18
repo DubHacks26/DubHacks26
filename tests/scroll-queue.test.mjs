@@ -14,7 +14,7 @@ test("refreshing recommendations preserves the current card and prioritizes inco
 
   const queue = refreshScrollQueue([first, second], [replacementFirst, third]);
 
-  assert.deepEqual(queue, [first, third, second]);
+  assert.deepEqual(queue, [replacementFirst, third, second]);
 });
 
 test("the first incoming feed initializes an empty Scroll queue", () => {
@@ -93,4 +93,15 @@ test("search reordering only replaces unseen cards with supplied search results"
     reorderRemainingScrollQueue([active, staleUnseen], [matching], 0),
     [active, matching],
   );
+});
+
+test("metadata hydration updates the active card without moving it", () => {
+  const first = { id: "first", title: "Old title" };
+  const next = { id: "next" };
+  const enriched = { ...first, title: "Full title", rating: 4.8 };
+  for (const refresh of [refreshScrollQueue, reorderRemainingScrollQueue]) {
+    const updated = refresh([first, next], [next, enriched], 0);
+    assert.equal(updated[0], enriched);
+    assert.equal(updated[1], next);
+  }
 });

@@ -9,7 +9,10 @@ export function refreshScrollQueue(queue = [], candidates = [], visitedThrough =
 
   if (!currentQueue.length) return incoming;
 
-  const history = currentQueue.slice(0, Math.max(0, visitedThrough + 1));
+  const updates = new Map(incoming.filter(product => product?.id).map(product => [product.id, product]));
+  // Refresh metadata by ID without moving an active or visited card.
+  const history = currentQueue.slice(0, Math.max(0, visitedThrough + 1))
+    .map(product => updates.get(product.id) || product);
   const queuedIds = new Set(history.map(product => product?.id));
   // Keep older candidates as a fallback when a response contains only a batch.
   const upcoming = [...incoming, ...currentQueue.slice(history.length)].filter((product) => {
@@ -31,9 +34,13 @@ export function reorderRemainingScrollQueue(queue = [], candidates = [], current
 
   if (!currentQueue.length) return incoming;
 
-  const pinned = currentQueue.slice(0, Math.max(0, currentIndex) + 1);
+  const updates = new Map(incoming.filter(product => product?.id).map(product => [product.id, product]));
+  const pinned = currentQueue.slice(0, Math.max(0, currentIndex) + 1)
+    .map(product => updates.get(product.id) || product);
   const pinnedIds = new Set(pinned.map(product => product?.id));
   const remaining = incoming.filter(product => product?.id && !pinnedIds.has(product.id));
 
-  return [...pinned, ...remaining];
+  const result = [...pinned, ...remaining];
+  return result.length === currentQueue.length && result.every((product, index) => product === currentQueue[index])
+    ? currentQueue : result;
 }
