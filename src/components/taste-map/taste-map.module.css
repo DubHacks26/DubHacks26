@@ -67,25 +67,8 @@
   background: #fcfbf9;
   box-shadow: 0 18px 55px rgb(67 45 61 / 8%);
 }
-.map {
-  display: block;
-  width: 100%;
-  height: 570px;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-}
-.map:active { cursor: grabbing; }
-.glow { fill: url(#taste-map-glow); }
-.link { stroke: #b58bb0; stroke-width: 1.2; transition: opacity 180ms ease, stroke 180ms ease; }
-.linkSelected { stroke: var(--plum); stroke-width: 2.3; }
-.linkMuted { opacity: 0.06 !important; }
-.node { cursor: pointer; outline: none; }
-.node circle { fill: #9a5a91; stroke: #fcfbf9; stroke-width: 2; transition: fill 160ms ease, r 160ms ease; }
-.node text { fill: var(--plum-dark); font-family: inherit; font-size: 13px; font-weight: 700; pointer-events: none; }
-.node:hover circle, .node:focus circle, .nodeSelected circle { fill: #e36f5e; }
-.nodeSelected circle { stroke: var(--plum-dark); stroke-width: 3; }
-.nodeMuted { opacity: 0.2; }
+.graphHost { width: 100%; height: 570px; }
+.graphHost :global(canvas) { display: block; outline: none; }
 .hint {
   position: absolute;
   right: 1rem;
@@ -96,6 +79,7 @@
   margin: 0;
   color: var(--muted);
   font-size: 0.68rem;
+  pointer-events: none;
 }
 .message {
   position: absolute;
@@ -105,6 +89,7 @@
   justify-content: center;
   gap: 0.7rem;
   padding: 2rem;
+  background: rgb(252 251 249 / 92%);
   color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
@@ -139,6 +124,6 @@
   .header > button { margin-top: 1.25rem; }
   .header h1 { font-size: 2.65rem; }
   .stats { flex-wrap: wrap; }
-  .mapPanel, .map { min-height: 480px; height: 480px; }
+  .mapPanel, .graphHost { min-height: 480px; height: 480px; }
   .hint { left: 1rem; right: auto; }
 }

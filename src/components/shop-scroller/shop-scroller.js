@@ -27,7 +27,10 @@ const ProductDrawer = dynamic(() => import("@/components/product-drawer/product-
 const CollectionPicker = dynamic(() => import("@/components/collection-picker/collection-picker"));
 const SearchOverlay = dynamic(() => import("@/components/search-overlay/search-overlay"));
 const SearchResults = dynamic(() => import("@/components/search-results/search-results"));
-const TasteMap = dynamic(() => import("@/components/taste-map/taste-map"));
+// `3d-force-graph` reads `window` as soon as it loads. Keep the map out of
+// Next's server render so the browser is always responsible for initializing
+// its WebGL canvas.
+const TasteMap = dynamic(() => import("@/components/taste-map/taste-map"), { ssr: false });
 
 function errorMessage(error, fallback) {
   const responseError = error?.response?.data?.error;

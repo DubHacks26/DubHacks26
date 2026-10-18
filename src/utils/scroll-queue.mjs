@@ -1,19 +1,26 @@
 /**
  * Keep a Scroll session stable while the recommendation feed is refreshed.
- * Existing cards retain their position; only new candidates join the end.
+ * Preserve visited cards, including the current card, but let the latest
+ * recommendations reorder the unseen tail.
  */
-export function appendToScrollQueue(queue = [], candidates = []) {
+export function refreshScrollQueue(queue = [], candidates = [], visitedThrough = 0) {
   const currentQueue = Array.isArray(queue) ? queue : [];
   const incoming = Array.isArray(candidates) ? candidates : [];
 
   if (!currentQueue.length) return incoming;
 
-  const queuedIds = new Set(currentQueue.map(product => product?.id));
-  const additions = incoming.filter((product) => {
+  const history = currentQueue.slice(0, Math.max(0, visitedThrough + 1));
+  const queuedIds = new Set(history.map(product => product?.id));
+  // Keep older candidates as a fallback when a response contains only a batch.
+  const upcoming = [...incoming, ...currentQueue.slice(history.length)].filter((product) => {
     if (!product?.id || queuedIds.has(product.id)) return false;
     queuedIds.add(product.id);
     return true;
   });
 
-  return additions.length ? [...currentQueue, ...additions] : currentQueue;
+  const refreshed = [...history, ...upcoming];
+  return refreshed.length === currentQueue.length
+    && refreshed.every((product, index) => product === currentQueue[index])
+    ? currentQueue
+    : refreshed;
 }

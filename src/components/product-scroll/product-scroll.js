@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { productChips } from "@/utils/feed.mjs";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
-import { appendToScrollQueue } from "@/utils/scroll-queue.mjs";
+import { refreshScrollQueue } from "@/utils/scroll-queue.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
@@ -77,13 +77,14 @@ export default function ProductScroll({
   const pendingDrag = useRef(null);
   const dragFrame = useRef(0);
   const shownAt = useRef(0);
+  const visitedThrough = useRef(0);
 
   useEffect(() => {
     let active = true;
-    // The recommendation request may resolve while a card is visible. Append
-    // its new candidates instead of replacing or reordering that card's queue.
+    // Apply new rankings to upcoming cards without moving the visible card
+    // or changing the history when the user scrolls back.
     Promise.resolve().then(() => {
-      if (active) setQueue(queue => appendToScrollQueue(queue, incomingProducts));
+      if (active) setQueue(queue => refreshScrollQueue(queue, incomingProducts, visitedThrough.current));
     });
     return () => {
       active = false;
@@ -126,6 +127,7 @@ export default function ProductScroll({
       return;
     }
     setCursor(clamped);
+    visitedThrough.current = Math.max(visitedThrough.current, clamped);
     setDrag({ axis: "", x: 0, y: 0 });
   };
 
@@ -162,6 +164,7 @@ export default function ProductScroll({
       setDrag({ axis: "", x: 0, y: 0 });
       setHeartPulse(false);
       setCursor(index + 1);
+      visitedThrough.current = Math.max(visitedThrough.current, index + 1);
       window.clearTimeout(exitTimer.current);
       exitTimer.current = window.setTimeout(() => setExitSwipe(null), PAGE_TRANSITION_DURATION);
     }, SWIPE_EXIT_DURATION);
