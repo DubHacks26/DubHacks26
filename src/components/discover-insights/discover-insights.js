@@ -2,11 +2,11 @@ import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import styles from "./discover-insights.module.css";
 
-export default function DiscoverInsights({ onNavigate, products, saved, profile, onTune }) {
+export default function DiscoverInsights({ onNavigate, products, saved = [], profile, onTune, showBudget = true, compact = false }) {
   return (
-    <aside className={styles.insights}>
+    <aside className={`${styles.insights} ${compact ? styles.compact : ""}`}>
       <TasteCard onOpen={onTune} profile={profile} />
-      <BudgetCard products={products} saved={saved} />
+      {showBudget && <BudgetCard products={products} saved={saved} />}
       <FriendsCard onOpen={() => onNavigate("Friends")} products={products} />
       <div className={styles.tip}>
         <Icon filled name="zap" size={18} />

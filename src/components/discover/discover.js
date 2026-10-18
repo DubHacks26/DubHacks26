@@ -8,7 +8,7 @@ import ProductImage from "@/components/product-image/product-image";
 import DiscoverInsights from "@/components/discover-insights/discover-insights";
 import styles from "./discover.module.css";
 
-export default function Discover({ products, product, nextProduct, profile, noMatches, canUndo, onTune, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved }) {
+export default function Discover({ products, product, nextProduct, profile, noMatches, canUndo, onTune, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved, cart = [], cartLoading = false, onCart, onRemoveFromCart, onBudget }) {
   const gesture = useRef(null);
   // motion is "" | "skip" | "like"
   const [motion, setMotion] = useState("");
@@ -32,11 +32,34 @@ export default function Discover({ products, product, nextProduct, profile, noMa
     return () => window.removeEventListener("keydown", handleKey);
   });
   const isSaved = product && saved.includes(product.id);
-  return <div className={styles.grid}>
+  const savedProducts = products.filter(item => saved.includes(item.id));
+  const cartSpend = cart.reduce((total, item) => total + Number(item.price || 0), 0);
+  const wishlistSpend = savedProducts.reduce((total, item) => total + Number(item.price || 0), 0);
+  const plannedSpend = cartSpend + wishlistSpend;
+  const categorySpend = [...cart, ...savedProducts].reduce((totals, item) => {
+    const category = item.category || "Other";
+    totals[category] = (totals[category] || 0) + Number(item.price || 0);
+    return totals;
+  }, {});
+
+  return <div className={styles.home}>
+    <header className={styles.homeHeader}>
+      <div>
+        <p className="shop-kicker">Welcome back</p>
+        <h1>Home</h1>
+      </div>
+      <div className={styles.homeActions}>
+        <Button onClick={onCart} variant="secondary"><Icon name="bag" size={16} /> Cart{cart.length ? ` (${cart.length})` : ""}</Button>
+      </div>
+    </header>
+    <div className={styles.grid}>
     <section className={styles.feed}>
+      {(cartLoading || cart.length > 0) && <CartPreview cart={cart} loading={cartLoading} onOpen={onCart} onRemove={onRemoveFromCart} />}
+      <BudgetPreview categories={categorySpend} plannedSpend={plannedSpend} onOpen={onBudget} />
+      <section className={styles.finds}>
       <header className={styles.heading}>
         <div><p className="shop-kicker">Curated for you</p><h1>Today&apos;s finds</h1></div>
-        <Button onClick={onTune} variant="secondary"><Icon name="sparkles" size={16} /> Tune my feed</Button>
+        <Button className={styles.tuneButton} onClick={onTune} variant="secondary"><Icon name="sparkles" size={16} /> Tune my feed</Button>
       </header>
       {!product ? <div className={styles.empty} role="status">
         <Icon name={noMatches ? "search" : "check"} size={32} />
@@ -89,7 +112,52 @@ export default function Discover({ products, product, nextProduct, profile, noMa
         </div>
         <p className={styles.hint}><span>↑</span> Skip <span>↓</span> Back · Heart to like</p>
       </>}
+      </section>
     </section>
-    <DiscoverInsights onNavigate={onNavigate} products={products} saved={saved} profile={profile} onTune={onTune} />
+    <DiscoverInsights compact onNavigate={onNavigate} products={products} profile={profile} onTune={onTune} showBudget={false} />
+  </div>
   </div>;
+}
+
+function CartPreview({ cart, loading, onOpen, onRemove }) {
+  const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  return <section className={styles.dashboardSection}>
+    <header className={styles.sectionHeader}>
+      <div><p className="shop-kicker">Ready when you are</p><h2>Cart</h2></div>
+      <Button className={styles.sectionAction} onClick={onOpen} variant="ghost">View cart <Icon name="arrowRight" size={15} /></Button>
+    </header>
+    <div className={styles.cartCard}>
+      {loading ? <p className={styles.loading}>Restoring your cart…</p> : cart.map(item => <div className={styles.cartRow} key={item.id}>
+        <ProductImage alt="" src={item.image} />
+        <div><strong>{item.name}</strong><span>{item.brand}</span></div>
+        <b>${Number(item.price).toFixed(2)}</b>
+        <button aria-label={`Remove ${item.name} from cart`} onClick={() => onRemove(item.id)} type="button"><Icon name="x" size={15} /></button>
+      </div>)}
+      {!loading && <footer className={styles.cartFooter}>
+        <span>Subtotal · {cart.length} item{cart.length === 1 ? "" : "s"}</span>
+        <strong>${total.toFixed(2)}</strong>
+      </footer>}
+    </div>
+  </section>;
+}
+
+function BudgetPreview({ categories, plannedSpend, onOpen }) {
+  const budget = 400;
+  const categoryRows = Object.entries(categories).sort(([, a], [, b]) => b - a).slice(0, 3);
+  return <section className={styles.dashboardSection}>
+    <header className={styles.sectionHeader}>
+      <div><p className="shop-kicker">This month</p><h2>Budget &amp; estimated spend</h2></div>
+      <Button className={styles.sectionAction} onClick={onOpen} variant="ghost">Budget <Icon name="arrowRight" size={15} /></Button>
+    </header>
+    <div className={styles.budgetCard}>
+      <div className={styles.budgetSummary}>
+        <div><span>Planned spend</span><strong>${plannedSpend.toFixed(0)}</strong><small>of ${budget} comfort budget</small></div>
+        <span className={styles.budgetRemaining}>${Math.max(budget - plannedSpend, 0).toFixed(0)} left</span>
+      </div>
+      <div className={styles.budgetTrack}><i style={{ width: `${Math.min((plannedSpend / budget) * 100, 100)}%` }} /></div>
+      {categoryRows.length > 0 ? <div className={styles.categoryRows}>{categoryRows.map(([category, amount]) => <div key={category}>
+        <span>{category}</span><i><b style={{ width: `${Math.min((amount / budget) * 100, 100)}%` }} /></i><strong>${amount.toFixed(0)}</strong>
+      </div>)}</div> : <p className={styles.budgetEmpty}>Save finds or add an item to your cart to see your plan take shape.</p>}
+    </div>
+  </section>;
 }

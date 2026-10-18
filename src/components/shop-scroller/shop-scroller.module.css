@@ -1,6 +1,7 @@
 .shell {
   min-height: 100vh;
   background: #f6f3ef;
+  outline: none;
 }
 .sidebar {
   position: fixed;

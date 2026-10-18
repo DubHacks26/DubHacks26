@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShopScroll – Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1ee; --card:#fff; --ink:#2a1e2c; --mute:#7b6d7c; --line:#ebe4e1; --plum:#6b3a62; --plum-d:#4a2444;
+  --lilac:#e9dcef; --blush:#f0dcdc; --coral:#d9634f; --warn:#c2452f; --good:#4d8a5f;
+  --serif:"Instrument Serif","Times New Roman",serif; --sans:"DM Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--plum);outline-offset:2px}
+svg{display:block}
+[hidden]{display:none!important}
+
+/* sidebar */
+aside{width:240px;flex:none;background:#fbf8f5;border-right:1px solid var(--line);padding:26px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;color:var(--plum-d);margin-bottom:24px;padding-left:6px}
+.logo i{width:36px;height:36px;border-radius:11px;background:var(--plum);display:grid;place-items:center}
+.logo svg{width:18px;stroke:#fff;fill:none;stroke-width:2}
+nav a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;color:#5b4d5c;font-weight:500;text-decoration:none}
+nav a.on{background:var(--lilac);color:var(--plum-d);font-weight:700}
+nav a b{width:18px;height:18px;border:2px solid currentColor;border-radius:6px;opacity:.6}
+.taste{margin-top:auto;background:var(--blush);border-radius:18px;padding:16px;font-size:13px;line-height:1.4}
+.taste strong{display:block;font-size:15px;margin-bottom:4px}
+.bar{height:6px;border-radius:9px;background:#fff8;margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;width:26%;background:var(--plum);border-radius:9px}
+.me{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px}
+.me i{width:40px;height:40px;border-radius:12px;background:#dfe8dd;display:grid;place-items:center;font-family:var(--serif);font-size:16px;font-style:normal}
+.me small{display:block;color:var(--mute);font-size:12px}
+
+/* layout */
+.wrap{flex:1;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 36px 0;max-width:1260px;margin:auto}
+.top p{font-size:14px;color:var(--mute)}
+.top h1{font-family:var(--serif);font-weight:400;font-size:30px}
+.tools{display:flex;align-items:center;gap:10px}
+.pill{height:42px;padding:0 16px;border-radius:30px;border:1px solid var(--line);background:#fff;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px}
+.pill b{background:var(--plum);color:#fff;border-radius:12px;min-width:20px;height:20px;display:grid;place-items:center;font-size:12px;padding:0 6px}
+.streak{color:#a5601e;font-size:14px}.streak b{color:var(--ink)}
+.page{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:28px;max-width:1260px;margin:auto;padding:12px 36px 60px;align-items:start}
+.main{display:flex;flex-direction:column;gap:44px;min-width:0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--plum)}
+.sh{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:16px}
+.sh h2{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1.05}
+.card{background:var(--card);border-radius:26px;box-shadow:0 18px 40px -26px rgba(70,30,65,.35)}
+.btn{background:var(--plum);color:#fff;border-radius:30px;padding:12px 22px;font-weight:700;font-size:14px}
+.btn.alt{background:var(--lilac);color:var(--plum-d)}
+
+/* 1 cart */
+.row{display:grid;grid-template-columns:64px 1fr auto 70px 28px;gap:16px;align-items:center;padding:16px 22px;border-bottom:1px solid var(--line)}
+.th{width:64px;height:64px;border-radius:16px;display:grid;place-items:center;overflow:hidden}
+.th svg{width:74%}
+.row h3{font-size:15px;font-weight:700;line-height:1.25}
+.row small{color:var(--mute);font-size:13px}
+.qty{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:20px}
+.qty button{width:30px;height:30px;font-size:16px;color:var(--plum)}
+.qty span{min-width:20px;text-align:center;font-size:14px;font-weight:700}
+.price{text-align:right;font-weight:700}
+.rm{color:var(--mute);font-size:20px}
+.cfoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px;flex-wrap:wrap}
+.cfoot span{color:var(--mute);font-size:14px}
+.cfoot b{font-size:24px;margin-left:8px;color:var(--ink)}
+
+/* 2 budget chart */
+.bud{padding:26px}
+.big{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.big strong{font-family:var(--serif);font-weight:400;font-size:52px;line-height:1}
+.big span{color:var(--mute);font-size:14px}
+.left{font-weight:700;font-size:15px}.left.over{color:var(--warn)}
+.track{height:16px;border-radius:10px;background:#f1ebee;overflow:hidden;display:flex;position:relative}
+.track.lg{height:24px;margin:16px 0 26px}
+.seg{height:100%;width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.seg.c{background:var(--plum)}
+.seg.w{background:repeating-linear-gradient(45deg,#c9a4c1 0 5px,#e6d1e1 5px 10px)}
+.track.over{box-shadow:inset 0 0 0 2px var(--warn)}
+.cr{display:grid;grid-template-columns:96px 1fr 150px;gap:14px;align-items:center;margin-top:14px;font-size:14px}
+.cr b{font-weight:700}
+.cr .v{text-align:right;color:var(--mute);font-size:13px}
+.cr .v em{font-style:normal;color:var(--warn);font-weight:700;display:block}
+.legend{display:flex;gap:18px;font-size:13px;color:var(--mute);margin-top:22px;padding-top:16px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:5px;vertical-align:-2px;margin-right:6px}
+.sw{margin-left:auto;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink);font-weight:500}
+.sw input{accent-color:var(--plum);width:16px;height:16px}
+
+/* 3 finds */
+.fcard{overflow:hidden;touch-action:pan-y;transition:transform .3s cubic-bezier(.2,.9,.3,1.2);user-select:none;-webkit-user-select:none}
+.fcard.drag{transition:none}
+.fimg{height:300px;position:relative;display:grid;place-items:center;overflow:hidden}
+.fimg svg{width:44%;max-height:78%;filter:drop-shadow(0 20px 22px rgba(0,0,0,.25))}
+.cat{position:absolute;top:18px;left:20px;padding:6px 12px;border-radius:20px;background:#fffd;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--plum-d)}
+.badge{position:absolute;top:50%;left:50%;width:100px;height:100px;margin:-50px;border-radius:50%;background:#fffe;display:grid;place-items:center;opacity:0;transform:scale(.4);pointer-events:none}
+.badge svg{width:46px;fill:var(--coral)}
+.fbody{padding:22px 28px 14px}
+.fbody .eyebrow{display:flex;justify-content:space-between;align-items:center}
+.fbody h3{font-family:var(--serif);font-weight:400;font-size:36px;line-height:1.05;margin:10px 0}
+.pr{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pr strong{font-size:22px}.pr span{font-size:14px;color:var(--mute)}.pr span b{color:#a5601e}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.chips span{background:var(--lilac);color:var(--plum-d);padding:8px 14px;border-radius:20px;font-size:13px}
+.desc{font-size:14px;color:#5b4d5c;line-height:1.5}
+details{margin:14px 0 0;font-size:14px}summary{cursor:pointer;font-weight:700;color:var(--plum)}
+details p{margin-top:8px;color:#5b4d5c}
+.flinks{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:16px;padding:14px 4px 6px;font-size:14px;font-weight:700;color:var(--plum)}
+.acts{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:22px}
+.ab{width:52px;height:52px;border-radius:50%;background:#fff;border:1px solid var(--line);display:grid;place-items:center;box-shadow:0 8px 18px -10px rgba(70,30,65,.5)}
+.ab svg{width:22px;fill:none;stroke:var(--plum-d);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ab.pass svg{stroke:var(--coral);width:24px}
+.ab.main{width:76px;height:76px;background:var(--coral);border:0}
+.ab.main svg{width:32px;fill:#fff;stroke:#fff}
+.ab.on svg{fill:var(--plum-d)}
+.dots{display:flex;justify-content:center;gap:6px;margin-top:16px}
+.dots i{width:6px;height:6px;border-radius:6px;background:#dacfd7}.dots i.on{width:20px;background:var(--plum)}
+
+/* right rail */
+.rail{display:flex;flex-direction:column;gap:16px;position:sticky;top:20px}
+.rail .card{padding:20px}
+.rail h4{font-size:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.live{color:var(--good);font-size:11px;letter-spacing:.1em}
+.rail h5{font-family:var(--serif);font-weight:400;font-size:26px;margin-bottom:6px}
+.rail p{font-size:13px;color:var(--mute)}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tags span{background:#f4eef3;border-radius:16px;padding:7px 12px;font-size:12px}
+.fr{display:flex;gap:12px;align-items:center;font-size:13px;margin-top:14px}
+.fr i{width:44px;height:44px;border-radius:12px;flex:none}
+.fr b{display:block;font-size:14px}.fr span{color:var(--mute)}
+.fr svg{width:20px;fill:var(--coral);margin-left:auto;flex:none}
+.tip{background:var(--blush)!important;display:flex;gap:12px;align-items:center;font-size:14px;box-shadow:none!important}
+.tip b{display:block}
+
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:30px;font-size:14px;opacity:0;pointer-events:none;transition:.3s;z-index:20}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.notes{position:fixed;top:0;right:0;bottom:0;width:min(370px,100%);background:#fff;border-left:1px solid var(--line);padding:26px;overflow:auto;z-index:15;transform:translateX(100%);transition:transform .35s}
+.notes.open{transform:none}
+.notes h3{font-family:var(--serif);font-weight:400;font-size:30px;margin-bottom:10px}
+.notes li{font-size:14px;line-height:1.5;color:#4e414f;margin:0 0 8px 18px}
+.notes .x{position:absolute;top:16px;right:18px;font-size:22px;color:var(--mute)}
+
+@media (max-width:1180px){.page{grid-template-columns:1fr}.rail{position:static}}
+@media (max-width:820px){
+  aside{display:none}.top,.page{padding-left:16px;padding-right:16px}
+  .row{grid-template-columns:56px 1fr auto;row-gap:8px}.row .price{grid-column:3}.row .rm{display:none}
+  .cr{grid-template-columns:1fr 1fr}.cr .track{grid-column:1/-1;order:3}
+  .sh h2{font-size:36px}.fimg{height:240px}.fbody h3{font-size:30px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="logo"><i><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7L6 8zM9 8a3 3 0 016 0"/></svg></i>ShopScroller</div>
+  <nav><a href="#" class="on"><b></b>Discover</a><a href="#"><b></b>Scroll</a><a href="#"><b></b>Missions</a><a href="#"><b></b>Collections</a><a href="#"><b></b>Budget</a><a href="#"><b></b>Friends</a><a href="#"><b></b>Profile</a></nav>
+  <div class="taste"><strong>Your taste is taking shape</strong><span id="sideTaste"></span><div class="bar"><i></i></div></div>
+  <div class="me"><i>CA</i><div><b>Cameron</b><small>Taste explorer</small></div></div>
+</aside>
+
+<div class="wrap">
+  <div class="top">
+    <div><p>Welcome back</p><h1>Cameron's home</h1></div>
+    <div class="tools">
+      <span class="streak">⚡ <b>7</b> day streak</span>
+      <button class="pill" id="cartJump">Cart <b id="cartBadge">0</b></button>
+      <button class="pill" id="demo">Demo: empty cart</button>
+      <button class="pill" id="notesBtn">Design notes</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="main">
+
+      <section id="cartSec" aria-labelledby="cartH">
+        <div class="sh"><div><div class="eyebrow">Ready to check out</div><h2 id="cartH">Your cart</h2></div></div>
+        <div class="card" id="cartCard"></div>
+      </section>
+
+      <section aria-labelledby="budH">
+        <div class="sh"><div><div class="eyebrow">This month</div><h2 id="budH">Budget &amp; estimated spend</h2></div></div>
+        <div class="card bud" id="budCard"></div>
+      </section>
+
+      <section aria-labelledby="findH">
+        <div class="sh"><div><div class="eyebrow">Curated for you</div><h2 id="findH">Today's finds</h2></div><button class="pill" id="tune">✦ Tune my feed</button></div>
+        <div id="finds"></div>
+      </section>
+    </div>
+
+    <div class="rail">
+      <div class="card"><h4>✦ Your taste <span class="live">LIVE</span></h4><h5>Picked for your interests</h5><p id="railTaste"></p><div class="tags"><span>Electronics</span><span>Home</span><span>Fashion</span></div></div>
+      <div class="card"><h4>Friends are loving <a href="#" style="font-size:12px;color:var(--plum);text-decoration:none">View all</a></h4>
+        <div class="fr"><i style="background:linear-gradient(135deg,#7ab7c9,#e5a8c1)"></i><div><b>Maya saved</b><span>Make Clay Charms · 12 min ago</span></div><svg viewBox="0 0 24 24"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.700-8 11-8 11z"/></svg></div>
+        <div class="fr"><i style="background:linear-gradient(135deg,#f3d9a4,#8aa0c9)"></i><div><b>Alex liked</b><span>399 Games &amp; Puzzles · 1 hr ago</span></div><svg viewBox="0 0 24 24"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.700-8 11-8 11z"/></svg></div></div>
+      <div class="card tip">⚡<div><b>Quick tip</b>Use arrow keys to swipe faster.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<section class="notes" id="notes" aria-label="Design notes">
+  <button class="x" id="xNotes" aria-label="Close">×</button>
+  <h3>Design choices</h3>
+  <ul>
+    <li><b>Order follows intent.</b> Cart first (what you're about to buy), then budget (what it costs you), then discovery (what you might add).</li>
+    <li><b>Cart only appears with items.</b> Use "Demo: empty cart" to see the page without it; the budget section moves to the top.</li>
+    <li><b>Budget is a horizontal bar chart.</b> A large bar for the month, then one bar per category. Solid plum is in your cart, hatched is wishlist, and a red outline with an "over by" note appears when a category is over budget.</li>
+    <li><b>Everything is connected.</b> Change quantities or remove items and the chart updates. Heart or add a find and it shows up in the chart straight away.</li>
+    <li><b>Toggle "Include wishlist"</b> to compare firm spending with the optimistic total.</li>
+    <li><b>Today's finds</b> keeps the existing card and action bar. Drag the card sideways or press the heart to save it, and the X to skip.</li>
+    <li>The right column keeps taste and friends, and the old wishlist budget card moved into the chart.</li>
+  </ul>
+</section>
+
+<script>
+const art={
+ chex:'<svg viewBox="0 0 120 160"><path d="M22 14h76l-6 134H28z" fill="#f2efe9"/><path d="M22 14h76l-2 26H24z" fill="#c9553b"/><rect x="34" y="62" width="52" height="42" rx="8" fill="#5a3326"/><circle cx="60" cy="125" r="9" fill="#d9a05b"/></svg>',
+ hp:'<svg viewBox="0 0 200 180"><path d="M30 110V90a70 70 0 01140 0v20" fill="none" stroke="#e6d9c6" stroke-width="12" stroke-linecap="round"/><rect x="18" y="98" width="44" height="66" rx="22" fill="#d9c8b0"/><rect x="138" y="98" width="44" height="66" rx="22" fill="#d9c8b0"/><rect x="30" y="108" width="20" height="46" rx="10" fill="#b8a58c"/><rect x="150" y="108" width="20" height="46" rx="10" fill="#b8a58c"/></svg>',
+ mug:'<svg viewBox="0 0 200 180"><g fill="#f4e9dc"><rect x="30" y="60" width="70" height="86" rx="14"/><path d="M100 80h14a16 16 0 010 36h-14" fill="none" stroke="#f4e9dc" stroke-width="9"/><rect x="108" y="86" width="62" height="64" rx="12" fill="#e8d5c0"/></g><g fill="#a86a4c"><circle cx="48" cy="90" r="2.5"/><circle cx="70" cy="112" r="2"/><circle cx="130" cy="110" r="2"/></g></svg>',
+ lamp:'<svg viewBox="0 0 200 180"><ellipse cx="100" cy="162" rx="48" ry="8" fill="#d9b86c"/><path d="M100 160V70Q100 24 146 30" fill="none" stroke="#e5c982" stroke-width="7" stroke-linecap="round"/><path d="M128 28l36 4-10 30z" fill="#f2dfa8"/><path d="M150 62l-26 70h60z" fill="#fff3c4" opacity=".25"/></svg>',
+ shoe:'<svg viewBox="0 0 200 180"><path d="M20 120q0-40 20-50l24 14 16-14q30 30 80 36 22 4 22 22v10H20z" fill="#f5efe4"/><rect x="18" y="128" width="164" height="16" rx="8" fill="#fff"/><path d="M70 82l10 14M86 76l10 14M102 82l10 14" stroke="#b9ad98" stroke-width="4" stroke-linecap="round"/></svg>',
+ charm:'<svg viewBox="0 0 200 180"><circle cx="70" cy="80" r="34" fill="#f2a6b8"/><circle cx="130" cy="70" r="28" fill="#8ec5d6"/><circle cx="105" cy="122" r="30" fill="#f4d27a"/><circle cx="70" cy="80" r="8" fill="#fff8"/></svg>'
+};
+const P={
+ chex:{cat:"Food",brand:"Independent brand",name:"Chex Mix Muddy Buddies Peanut Butter & Chocolate Snack Mix, 9 oz",short:"Chex Mix Muddy Buddies",price:3.46,rate:"4.7",n:"2,499",tags:["Food","Snacks","#Snack","Under $50"],why:"You've liked three snack items this week.",bg:["#f3b99f","#b8573f"]},
+ mug:{cat:"Home",brand:"Kiln & Co",name:"Speckled Stoneware Mug Set",short:"Stoneware Mug Set",price:42,rate:"4.9",n:"862",tags:["Home","Kitchen","#Ceramics","Under $50"],why:"Matches the warm neutrals in your hearts.",bg:["#e2b08a","#8a4f3a"]},
+ lamp:{cat:"Home",brand:"Halo Studio",name:"Arc Desk Lamp with Dimmable Warm Bulb",short:"Arc Desk Lamp",price:64,rate:"4.7",n:"530",tags:["Home","Lighting","#Workspace","Under $100"],why:"Popular with people who liked your headphones.",bg:["#9db0cc","#4d5f7a"]},
+ hp:{cat:"Electronics",brand:"Auraline",name:"Studio Pro Headphones",short:"Studio Pro Headphones",price:89,rate:"4.8",n:"1,240",tags:["Electronics","Audio","#DeskSetup","Under $100"],why:"You like electronics under $100.",bg:["#cdbba3","#7a6a58"]},
+ shoe:{cat:"Fashion",brand:"Fieldwork",name:"Everyday Canvas Sneakers",short:"Canvas Sneakers",price:75,rate:"4.6",n:"2,031",tags:["Fashion","Shoes","#Everyday","Under $100"],why:"Trending with people near you.",bg:["#a9c6b4","#4f7561"]},
+ charm:{cat:"Home",brand:"Craftly",name:"Make Clay Charms Kit",short:"Clay Charms Kit",price:14.99,rate:"4.5",n:"3,310",tags:["Home","Crafts","#DIY","Under $50"],why:"Your friend Maya saved this.",bg:["#cfe6ee","#7fa9bb"]}
+};
+const BUDGET={Electronics:150,Home:100,Fashion:100,Food:50},TOTAL=400;
+const money=n=>'$'+(Number.isInteger(+n.toFixed(2))?n.toFixed(0):n.toFixed(2));
+const FULL={hp:1,shoe:1,charm:1};
+let cart={...FULL},wish=new Set(['lamp','mug']),inclWish=true,baseLikes=33,deck=Object.keys(P),di=0,saved=new Set();
+const $=id=>document.getElementById(id);
+const heartP='<svg viewBox="0 0 24 24"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.700-8 11-8 11z"/></svg>';
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1500)}
+
+/* 1. cart */
+function renderCart(){
+  const ids=Object.keys(cart),count=ids.reduce((s,k)=>s+cart[k],0),sub=ids.reduce((s,k)=>s+cart[k]*P[k].price,0);
+  $('cartSec').hidden=!ids.length;$('cartBadge').textContent=count;
+  $('cartCard').innerHTML=ids.map(k=>{const p=P[k];return `<div class="row">
+    <div class="th" style="background:radial-gradient(${p.bg[0]},${p.bg[1]})">${art[k]}</div>
+    <div><h3>${p.short}</h3><small>${p.brand} · ${p.cat}</small></div>
+    <div class="qty"><button data-q="${k}" data-d="-1" aria-label="Decrease">−</button><span>${cart[k]}</span><button data-q="${k}" data-d="1" aria-label="Increase">+</button></div>
+    <div class="price">${money(p.price*cart[k])}</div><button class="rm" data-rm="${k}" aria-label="Remove ${p.short}">×</button></div>`}).join('')+
+   `<div class="cfoot"><span>Subtotal · ${count} item${count===1?'':'s'}<b>${money(sub)}</b></span><div><button class="btn alt" style="margin-right:8px" id="keep">Keep browsing</button><button class="btn" id="checkout">Checkout</button></div></div>`;
+  renderBudget();
+}
+$('cartCard').addEventListener('click',e=>{
+  const q=e.target.closest('[data-q]'),r=e.target.closest('[data-rm]');
+  if(q){const k=q.dataset.q;cart[k]=Math.max(0,cart[k]+ +q.dataset.d);if(!cart[k])delete cart[k];renderCart()}
+  if(r){delete cart[r.dataset.rm];renderCart()}
+  if(e.target.id==='checkout')toast('Demo only: checkout would open here');
+  if(e.target.id==='keep')$('findH').scrollIntoView({behavior:'smooth'});
+});
+
+/* 2. budget bar chart */
+function renderBudget(){
+  const c={},w={};Object.keys(BUDGET).forEach(k=>{c[k]=0;w[k]=0});
+  Object.keys(cart).forEach(k=>c[P[k].cat]+=P[k].price*cart[k]);
+  wish.forEach(k=>{if(!cart[k])w[P[k].cat]+=P[k].price});
+  const cartT=Object.values(c).reduce((a,b)=>a+b,0),wishT=inclWish?Object.values(w).reduce((a,b)=>a+b,0):0,est=cartT+wishT,left=TOTAL-est;
+  const bar=(cv,wv,b,cls='')=>{const cp=Math.min(cv/b,1)*100,wp=Math.max(0,Math.min((cv+wv)/b,1)*100-cp);
+    return `<div class="track ${cls} ${cv+wv>b?'over':''}"><i class="seg c" data-w="${cp}"></i><i class="seg w" data-w="${wp}"></i></div>`};
+  $('budCard').innerHTML=`<div class="big"><div><span>Estimated spend</span><br><strong>${money(est)}</strong> <span>of ${money(TOTAL)}</span></div>
+    <div class="left ${left<0?'over':''}">${left<0?money(-left)+' over budget':money(left)+' left'}</div></div>
+    ${bar(cartT,wishT,TOTAL,'lg')}
+    ${Object.keys(BUDGET).map(k=>{const t=c[k]+(inclWish?w[k]:0),b=BUDGET[k];
+      return `<div class="cr"><b>${k}</b>${bar(c[k],inclWish?w[k]:0,b)}<div class="v">${money(t)} / ${money(b)}${t>b?`<em>Over by ${money(t-b)}</em>`:''}</div></div>`}).join('')}
+    <div class="legend"><span><i style="background:var(--plum)"></i>In cart ${money(cartT)}</span><span><i style="background:repeating-linear-gradient(45deg,#c9a4c1 0 3px,#e6d1e1 3px 6px)"></i>Wishlist ${money([...wish].filter(k=>!cart[k]).reduce((s,k)=>s+P[k].price,0))}</span>
+    <label class="sw"><input type="checkbox" id="inclW" ${inclWish?'checked':''}>Include wishlist</label></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$('budCard').querySelectorAll('[data-w]').forEach(i=>i.style.width=i.dataset.w+'%')));
+  $('inclW').onchange=e=>{inclWish=e.target.checked;renderBudget()};
+  taste();
+}
+function taste(){
+  const n=baseLikes+wish.size;
+  $('sideTaste').textContent=`${n} likes are shaping your recommendations.`;
+  $('railTaste').textContent=`${n} likes shaping your feed · ${wish.size} wishlist find${wish.size===1?'':'s'}`;
+}
+
+/* 3. today's finds */
+function renderFinds(){
+  const k=deck[di],p=P[k],inCart=!!cart[k],hearted=wish.has(k);
+  $('finds').innerHTML=`<article class="card fcard" id="fc">
+    <div class="fimg" style="background:radial-gradient(110% 100% at 50% 40%,${p.bg[0]},${p.bg[1]})"><span class="cat">${p.cat}</span>${art[k]}<div class="badge" id="bd">${heartP}</div></div>
+    <div class="fbody"><div class="eyebrow">${p.brand}<button class="ab" style="width:36px;height:36px;box-shadow:none;border:0" id="bm" aria-label="Save for later"><svg viewBox="0 0 24 24" style="width:20px;${saved.has(k)?'fill:var(--plum-d)':''}"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button></div>
+      <h3>${p.name}</h3>
+      <div class="pr"><strong>${money(p.price)}</strong><span><b>★ ${p.rate}</b> (${p.n})</span></div>
+      <div class="chips">${p.tags.map(t=>`<span>${t}</span>`).join('')}</div>
+      <div class="desc">${p.short} from ${p.brand}.</div>
+      <details><summary>Why am I seeing this?</summary><p>${p.why}</p></details>
+      <div class="flinks"><span>Product details ›</span><span>Reviews</span></div>
+      <div class="acts">
+        <button class="ab" id="undo" aria-label="Previous find"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 108-8M4 4v5h5"/></svg></button>
+        <button class="ab pass" id="pass" aria-label="Skip"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button class="ab main" id="love" aria-label="Heart">${heartP}</button>
+        <button class="ab ${inCart?'on':''}" id="add" aria-label="Add to cart"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM9 8a3 3 0 016 0"/></svg></button>
+        <button class="ab" id="share" aria-label="Share"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.500"/><circle cx="18" cy="6" r="2.500"/><circle cx="18" cy="18" r="2.500"/><path d="M8.300 11l7.400-4M8.300 13l7.400 4"/></svg></button>
+      </div>
+      <div class="dots">${deck.map((_,i)=>`<i class="${i===di?'on':''}"></i>`).join('')}</div></div></article>`;
+  const fc=$('fc');
+  $('undo').onclick=()=>{di=(di+deck.length-1)%deck.length;renderFinds()};
+  $('pass').onclick=next;
+  $('love').onclick=()=>heart(k);
+  $('add').onclick=()=>{if(cart[k])return toast('Already in your cart');cart[k]=1;toast('Added to cart');renderCart();renderFinds()};
+  $('share').onclick=()=>toast('Link copied');
+  $('bm').onclick=()=>{saved.has(k)?saved.delete(k):saved.add(k);toast(saved.has(k)?'Saved for later':'Removed from saved');renderFinds()};
+  // drag sideways to heart (either direction)
+  let x0=null,mv=false;
+  fc.onpointerdown=e=>{if(e.target.closest('button,summary,details'))return;x0=e.clientX;mv=false;fc.setPointerCapture(e.pointerId)};
+  fc.onpointermove=e=>{if(x0===null)return;const dx=e.clientX-x0;if(Math.abs(dx)>8)mv=true;if(!mv)return;fc.classList.add('drag');fc.style.transform=`translateX(${dx*.5}px) rotate(${dx/60}deg)`;const b=$('bd'),s=Math.min(Math.abs(dx)/90,1);b.style.opacity=s;b.style.transform=`scale(${.4+s*.6})`};
+  fc.onpointerup=fc.onpointercancel=e=>{if(x0===null)return;const dx=e.clientX-x0;x0=null;fc.classList.remove('drag');fc.style.transform='';$('bd').style.opacity=0;if(mv&&Math.abs(dx)>90)heart(k)};
+}
+function next(){di=(di+1)%deck.length;renderFinds()}
+function heart(k){
+  if(cart[k]){toast('Already in your cart');return next()}
+  if(wish.has(k))toast('Already hearted');else{wish.add(k);toast(`Hearted · ${money(P[k].price)} added to estimated spend`);renderBudget()}
+  setTimeout(next,450);
+}
+
+$('cartJump').onclick=()=>($('cartSec').hidden?$('budH'):$('cartH')).scrollIntoView({behavior:'smooth'});
+$('demo').onclick=()=>{const empty=!Object.keys(cart).length;cart=empty?{...FULL}:{};$('demo').textContent=empty?'Demo: empty cart':'Demo: restore cart';renderCart();renderFinds()};
+$('tune').onclick=()=>toast('Feed preferences would open here');
+const n=$('notes'),setN=o=>n.classList.toggle('open',o);
+$('notesBtn').onclick=()=>setN(!n.classList.contains('open'));$('xNotes').onclick=()=>setN(false);
+addEventListener('keydown',e=>{if(e.target.closest('input'))return;if(e.key==='ArrowRight')next();if(e.key==='ArrowLeft')$('undo').click();if(e.key==='h'||e.key==='H')heart(deck[di])});
+
+renderCart();renderFinds();
+</script>
+</body>
+</html>

@@ -4,6 +4,9 @@
   gap: 0.9rem;
   padding-top: 4.4rem;
 }
+.compact {
+  padding-top: 0;
+}
 .panel {
   padding: 1.1rem;
   border: 1px solid var(--line);

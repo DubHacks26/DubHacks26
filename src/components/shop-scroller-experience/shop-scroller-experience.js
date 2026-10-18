@@ -31,7 +31,7 @@ function syncLikedCollection(profile) {
   };
 }
 
-export default function ShopScrollerExperience({ user, initialPage = "Discover" }) {
+export default function ShopScrollerExperience({ user, initialPage = "Home" }) {
   const [stage, setStage] = useState("loading");
   const [profile, setProfile] = useState(createProfile);
   const [historyProducts, setHistoryProducts] = useState([]);

@@ -108,7 +108,7 @@ export default function AppShell({
   profile,
   setProfile,
   user,
-  initialPage = "Discover",
+  initialPage = "Home",
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -187,7 +187,7 @@ export default function AppShell({
   };
 
   const navigateTo = (label) => {
-    const destination = navItems.find(item => item.label === label)?.href;
+    const destination = navItems.find(item => item.label === (label === "Discover" ? "Home" : label))?.href;
     if (destination) router.push(destination);
   };
 
@@ -251,7 +251,7 @@ export default function AppShell({
       .then(event => {
         if (event.embeddingError || event.embeddingApplied === false) {
           showToast("Action saved. Vector learning is temporarily unavailable; other feedback still guides your feed.");
-        } else {
+        } else if (successMessage) {
           showToast(successMessage);
         }
         onSaved?.(event);
@@ -356,7 +356,7 @@ export default function AppShell({
       action,
       action === "like"
         ? "Liked. Your feed will learn from this."
-        : "Skipped. Your feed will learn from this.",
+        : null,
       event => setLastSwipe(event),
     );
   };
@@ -428,7 +428,7 @@ export default function AppShell({
   };
 
   let content;
-  if (page === "Discover")
+  if (page === "Home")
     content = (
       <Discover
         product={currentProduct}
@@ -437,6 +437,11 @@ export default function AppShell({
         profile={profile}
         noMatches={matchingCount === 0}
         canUndo={Boolean(lastSwipe)}
+        cart={cart}
+        cartLoading={!cartLoaded}
+        onCart={() => navigateTo("Cart")}
+        onRemoveFromCart={removeFromCart}
+        onBudget={() => navigateTo("Budget")}
         onTune={() => setTuning(true)}
         onRevisit={() => {
           setProfile(current => ({ ...current, seen: [] }));
@@ -458,7 +463,7 @@ export default function AppShell({
       <ProductScroll
         onDetails={(product, type) => setDrawer({ product, type })}
         onHeart={heartFromScroll}
-        onSkip={product => persistAction(product, "skip", "Skipped. Your feed will learn from this.")}
+        onSkip={product => persistAction(product, "skip", null)}
         onSave={openCollectionPicker}
         onShare={shareProduct}
         loading={catalogLoading}
@@ -474,7 +479,7 @@ export default function AppShell({
       />
     );
   else if (page === "Missions")
-    content = <Missions onDiscover={() => navigateTo("Discover")} />;
+    content = <Missions onDiscover={() => navigateTo("Home")} />;
   else if (page === "Collections")
     content = (
       <Collections
@@ -486,7 +491,7 @@ export default function AppShell({
         onAddToCart={addToCart}
         onCreateCollection={createCollection}
         onDeleteCollection={deleteCollection}
-        onDiscover={() => navigateTo("Discover")}
+        onDiscover={() => navigateTo("Home")}
         onRemoveFromCollection={removeFromCollection}
       />
     );
