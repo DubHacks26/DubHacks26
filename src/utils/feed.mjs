@@ -111,6 +111,9 @@ const overallWeights = {
   popularity: 0.08,
 };
 
+const explorationWeight = 0.05;
+const dayInMs = 86_400_000;
+
 function parseList(value) {
   if (Array.isArray(value)) return value.filter((item) => typeof item === "string");
   if (typeof value !== "string" || !value.trim()) return [];
@@ -537,6 +540,25 @@ function scoreWithContext(product, profile, context) {
   return Math.max(0, baseScore - categoryPenalty);
 }
 
+function explorationScore(product, profile, now) {
+  const day = Math.floor(now / dayInMs);
+  const preferences = profile.preferences;
+  const profileKey = [
+    [...(preferences.categories || [])].sort().join(","),
+    preferences.minPrice,
+    preferences.maxPrice,
+    profile.events.map((event) =>
+      `${event.productId}:${event.action}:${event.createdAt}`).join("|"),
+  ].join(";");
+  const input = `${day};${profileKey};${product.id}`;
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 0x1_0000_0000;
+}
+
 export function score(product, profile, catalog, now = Date.now()) {
   return scoreWithContext(product, profile, buildContext(catalog, now));
 }
@@ -547,7 +569,14 @@ export function getFeed(catalog, profile, now = Date.now(), sourceCatalog = cata
   ).values()], now);
   return catalog
     .filter((product) => !profile.seen.includes(product.id))
-    .map((product) => ({ product, score: scoreWithContext(product, profile, context) }))
+    .map((product) => {
+      const score = scoreWithContext(product, profile, context);
+      const exploration = explorationScore(product, profile, now);
+      return {
+        product,
+        score: score * (1 - explorationWeight) + exploration * explorationWeight,
+      };
+    })
     .sort((a, b) => b.score - a.score || String(a.product.id).localeCompare(String(b.product.id)))
     .map(({ product }) => product);
 }

@@ -113,11 +113,16 @@ test("title word overlap does not affect ranking without semantic embeddings", (
   const coffeeMaker = normalizeProduct({ ...seed, asin: "A000000009", title: "Coffee maker" });
   const candyMachine = normalizeProduct({ ...seed, asin: "A000000010", title: "Candy machine" });
   const candidates = [seed, coffeeMaker, candyMachine];
+  const createdAt = "2026-10-18T00:00:00.000Z";
   const liked = recordAction(createProfile(), seed.id, "like", {
     id: "coffee-like",
-    createdAt: new Date().toISOString(),
+    createdAt,
   });
-  assert.equal(personalScore(coffeeMaker, liked, candidates), personalScore(candyMachine, liked, candidates));
+  const now = Date.parse(createdAt) + 60_000;
+  assert.equal(
+    personalScore(coffeeMaker, liked, candidates, now),
+    personalScore(candyMachine, liked, candidates, now),
+  );
 });
 
 test("semantic title embeddings favor products with similar meaning", () => {
@@ -423,6 +428,25 @@ test("unclassified products remain rankable without invented category matches", 
   assert.equal(unclassified.category, null);
   assert.equal(unclassified.rating, null);
   assert.equal(getFeed([unclassified], createProfile())[0].id, "A000000005");
+});
+
+test("feed exploration is small, deterministic, and varies otherwise tied products", () => {
+  const products = Array.from({ length: 12 }, (_, index) => normalizeProduct({
+    asin: `R${String(index).padStart(9, "0")}`,
+    title: `Product ${index}`,
+    price_cents: 2500,
+  }));
+  const profile = createProfile();
+  const now = Date.parse("2026-10-20T00:00:00.000Z");
+  const firstRanking = getFeed(products, profile, now);
+  const secondRanking = getFeed(products, profile, now);
+
+  assert.deepEqual(firstRanking.map((product) => product.id), secondRanking.map((product) => product.id));
+  assert.notDeepEqual(
+    firstRanking.map((product) => product.id),
+    products.map((product) => product.id).sort(),
+  );
+  assert.equal(score(products[0], profile, products, now), score(products[1], profile, products, now));
 });
 
 
