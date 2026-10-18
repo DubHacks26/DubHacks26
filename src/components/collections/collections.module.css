@@ -140,6 +140,9 @@
   color: var(--muted);
   font-size: 0.65rem;
 }
+.productGrid button:disabled {
+  opacity: 0.65;
+}
 @media (max-width: 1020px) {
   .grid {
     grid-template-columns: repeat(2, 1fr);

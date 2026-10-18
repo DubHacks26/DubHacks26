@@ -5,6 +5,7 @@ import Link from "next/link";
 import { products as demoProducts } from "@/utils/shopScrollerData";
 import { likedCollectionId } from "@/utils/feed.mjs";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
+import { toCartItem } from "@/utils/cart.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
@@ -17,6 +18,9 @@ export default function Collections({
   onCreateCollection,
   onDeleteCollection,
   onRemoveFromCollection,
+  onAddToCart,
+  cartIds = [],
+  cartReady = true,
   onDiscover,
   collectionId = null,
 }) {
@@ -122,16 +126,28 @@ export default function Collections({
             </div>
           ) : (
             <div className={styles.productGrid}>
-              {selectedProducts.map(product => (
-                <article key={product.id}>
-                  <ProductImage alt="" src={product.image} />
-                  <strong>{product.name}</strong>
-                  <span>{formatProductPrice(product.price)}</span>
-                  <Button onClick={() => onRemoveFromCollection(selectedCollection.id, product)} variant="ghost">
-                    {selectedCollection.id === likedCollectionId ? "Unlike" : "Remove"}
-                  </Button>
-                </article>
-              ))}
+              {selectedProducts.map(product => {
+                const cartItem = toCartItem(product);
+                const inCart = cartItem && cartIds.includes(cartItem.id);
+                return (
+                  <article key={product.id}>
+                    <ProductImage alt="" src={product.image} />
+                    <strong>{product.name}</strong>
+                    <span>{formatProductPrice(product.price)}</span>
+                    <Button
+                      disabled={!cartReady || !cartItem || inCart}
+                      onClick={() => onAddToCart(product)}
+                      title={!cartReady ? "Cart is loading" : !cartItem ? "A listed price and Amazon listing are required" : undefined}
+                      variant="secondary"
+                    >
+                      {!cartReady ? "Loading cart" : inCart ? "In cart" : cartItem ? "Add to cart" : "Unavailable"}
+                    </Button>
+                    <Button onClick={() => onRemoveFromCollection(selectedCollection.id, product)} variant="ghost">
+                      {selectedCollection.id === likedCollectionId ? "Unlike" : "Remove"}
+                    </Button>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>

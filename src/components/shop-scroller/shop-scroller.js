@@ -7,9 +7,11 @@ import { getCatalogProducts, getRecommendations } from "@/api/UserAPI";
 import { navItems } from "@/utils/shopScrollerData";
 import { getFeed, matches, defaultPreferences, likedCollectionId } from "@/utils/feed.mjs";
 import { normalizeCatalogProduct } from "@/utils/catalogProduct.mjs";
+import { restoreCart, toCartItem } from "@/utils/cart.mjs";
 import FeedPreferences from "@/components/feed-preferences/feed-preferences";
 import Discover from "@/components/discover/discover";
 import ProductScroll from "@/components/product-scroll/product-scroll";
+import Cart from "@/components/cart/cart";
 import Missions from "@/components/missions/missions";
 import Collections from "@/components/collections/collections";
 import Budget from "@/components/budget/budget";
@@ -33,7 +35,7 @@ function errorMessage(error, fallback) {
   return typeof error?.message === "string" ? error.message : fallback;
 }
 
-function Sidebar({ page, username, count, catalogSize }) {
+function Sidebar({ page, username, count, catalogSize, cartCount }) {
   const hasLikes = count > 0;
   return (
     <aside className={styles.sidebar}>
@@ -49,7 +51,7 @@ function Sidebar({ page, username, count, catalogSize }) {
             key={item.label}
           >
             <Icon name={item.icon} size={19} />
-            <span>{item.label}</span>
+            <span>{item.label}{item.label === "Cart" && cartCount ? ` (${cartCount})` : ""}</span>
             {page === item.label && <i />}
           </Link>
         ))}
@@ -151,6 +153,38 @@ export default function AppShell({
   const [collectionPickerProduct, setCollectionPickerProduct] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const [cart, setCart] = useState([]);
+  const [cartLoaded, setCartLoaded] = useState(false);
+  const cartStorageKey = `shopscroller:cart:v1:${user.id}`;
+  const cartIds = cart.map(item => item.id);
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      try {
+        const stored = window.localStorage.getItem(cartStorageKey);
+        setCart(restoreCart(stored ? JSON.parse(stored) : []));
+      } catch (error) {
+        setCart([]);
+        setToast(`Could not restore your cart: ${error.message}`);
+      } finally {
+        setCartLoaded(true);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [cartStorageKey]);
+
+  const saveCart = (nextCart) => {
+    setCart(nextCart);
+    try {
+      window.localStorage.setItem(cartStorageKey, JSON.stringify(nextCart));
+    } catch (error) {
+      showToast(`Could not save your cart: ${error.message}`);
+    }
+  };
 
   const navigateTo = (label) => {
     const destination = navItems.find(item => item.label === label)?.href;
@@ -182,6 +216,29 @@ export default function AppShell({
   const showToast = (message) => {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
+  };
+
+  const addToCart = (product) => {
+    if (!cartLoaded) {
+      showToast("Your cart is still loading. Please try again shortly.");
+      return;
+    }
+    const item = toCartItem(product);
+    if (!item) {
+      showToast("This product needs a listed price and Amazon listing before it can be added.");
+      return;
+    }
+    if (cartIds.includes(item.id)) {
+      showToast(`${item.name} is already in your cart.`);
+      return;
+    }
+    saveCart([...cart, item]);
+    showToast(`${item.name} added to your cart.`);
+  };
+
+  const removeFromCart = (productId) => {
+    saveCart(cart.filter(item => item.id !== productId));
+    showToast("Item removed from your cart.");
   };
 
   const persistAction = (product, action, successMessage, onSaved) => {
@@ -421,13 +478,25 @@ export default function AppShell({
   else if (page === "Collections")
     content = (
       <Collections
+        cartReady={cartLoaded}
+        cartIds={cartIds}
         catalogProducts={products}
         collectionId={collectionId}
         collections={profile.collections || []}
+        onAddToCart={addToCart}
         onCreateCollection={createCollection}
         onDeleteCollection={deleteCollection}
         onDiscover={() => navigateTo("Discover")}
         onRemoveFromCollection={removeFromCollection}
+      />
+    );
+  else if (page === "Cart")
+    content = (
+      <Cart
+        items={cart}
+        loading={!cartLoaded}
+        onRemove={removeFromCart}
+        onShop={() => navigateTo("Scroll")}
       />
     );
   else if (page === "Budget")
@@ -437,7 +506,7 @@ export default function AppShell({
 
   return (
     <div className={`${styles.shell} ${page === "Scroll" ? styles.scrollShell : ""}`}>
-      <Sidebar page={page} count={profile.likes.length} catalogSize={catalogProducts?.length || 100} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
+      <Sidebar page={page} count={profile.likes.length} catalogSize={catalogProducts?.length || 100} cartCount={cart.length} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
       <main className={styles.main}>
         <Topbar
           onMessages={() => navigateTo("Friends")}
@@ -450,7 +519,7 @@ export default function AppShell({
         className={styles.mobileNav}
         aria-label="Mobile ShopScroller navigation"
       >
-        {navItems.slice(0, 6).map((item) => (
+        {navItems.slice(0, 7).map((item) => (
           <Link
             className={`${styles.mobileLink} ${page === item.label ? styles.activeMobile : ""}`}
             aria-current={page === item.label ? "page" : undefined}
@@ -475,9 +544,13 @@ export default function AppShell({
         <ProductDrawer
           onClose={() => setDrawer(null)}
           onDislike={dislikeProductCategory}
+          onAddToCart={addToCart}
           onSave={openCollectionPicker}
           onTooExpensive={markTooExpensive}
           product={drawer.product}
+          canAddToCart={cartLoaded && Boolean(toCartItem(drawer.product))}
+          inCart={cartIds.includes(String(drawer.product.asin || drawer.product.id))}
+          showCartActions={page === "Scroll"}
           showPriceFeedback={page === "Scroll"}
           type={drawer.type}
         />

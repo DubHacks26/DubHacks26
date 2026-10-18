@@ -75,6 +75,7 @@ export const navItems = [
   { label: "Scroll", href: "/scroll", icon: "scroll" },
   { label: "Missions", href: "/missions", icon: "target" },
   { label: "Collections", href: "/collections", icon: "layers" },
+  { label: "Cart", href: "/cart", icon: "cart" },
   { label: "Budget", href: "/budget", icon: "wallet" },
   { label: "Friends", href: "/friends", icon: "users" },
   { label: "Profile", href: "/profile", icon: "user" },

@@ -7,7 +7,7 @@ import ProductImage from "@/components/product-image/product-image";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
 import styles from "./product-drawer.module.css";
 
-export default function ProductDrawer({ product, type, onClose, onSave, onDislike, onTooExpensive, showPriceFeedback }) {
+export default function ProductDrawer({ product, type, onClose, onSave, onDislike, onTooExpensive, onAddToCart, inCart, canAddToCart, showCartActions, showPriceFeedback }) {
   const reviewCount = Number.isInteger(product.reviews) && product.reviews > 0 ? product.reviews : 0;
   const rating = Number.isFinite(product.rating) ? product.rating.toFixed(1) : null;
   useEffect(() => {
@@ -86,6 +86,16 @@ export default function ProductDrawer({ product, type, onClose, onSave, onDislik
             <Button onClick={() => onSave(product)}>
               <Icon name="bookmark" size={17} /> Save to collection
             </Button>
+            {type === "details" && showCartActions && (
+              <Button
+                disabled={!canAddToCart || inCart}
+                onClick={() => onAddToCart(product)}
+                title={!canAddToCart ? "A listed price and Amazon listing are required" : undefined}
+                variant="secondary"
+              >
+                <Icon name="cart" size={17} /> {inCart ? "In cart" : canAddToCart ? "Add to cart" : "Unavailable"}
+              </Button>
+            )}
             {product.productUrl ? <a
               className={styles.retailerLink}
               href={product.productUrl}
