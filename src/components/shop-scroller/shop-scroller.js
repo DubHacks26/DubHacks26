@@ -292,26 +292,18 @@ export default function AppShell({
 
   const openCollectionPicker = (product) => setCollectionPickerProduct(product);
 
-  const act = (action) => {
+  const swipe = (action) => {
     if (!currentProduct) return;
-    const storedAction = action === "price"
-      ? "too_expensive"
-      : action === "category"
-        ? "less_category"
-        : action;
     persistAction(
       currentProduct,
-      storedAction,
+      action,
       action === "like"
         ? "Liked. Your feed will learn from this."
-        : action === "skip"
-          ? "Skipped. Your feed will learn from this."
-          : "Feedback noted. Similar finds will rank lower.",
+        : "Skipped. Your feed will learn from this.",
       event => setLastSwipe(event),
     );
   };
   // Discover now passes "like" or "skip" directly (swipe up = skip, heart = like).
-  const swipe = direction => act(direction);
 
   const heartFromScroll = (product) => {
     const wasLiked = profile.likes.includes(product.id);
@@ -325,6 +317,11 @@ export default function AppShell({
   const dislikeProductCategory = (product) => {
     const category = product.mainCategory || product.category;
     persistAction(product, "less_category", `Got it. We’ll show you fewer ${category} finds.`);
+    setDrawer(null);
+  };
+
+  const markTooExpensive = (product) => {
+    persistAction(product, "too_expensive", "Got it. We’ll prioritize lower-priced finds.");
     setDrawer(null);
   };
 
@@ -384,7 +381,6 @@ export default function AppShell({
         noMatches={matchingCount === 0}
         canUndo={Boolean(lastSwipe)}
         onTune={() => setTuning(true)}
-        onFeedback={act}
         onRevisit={() => {
           setProfile(current => ({ ...current, seen: [] }));
           setLastSwipe(null);
@@ -480,7 +476,9 @@ export default function AppShell({
           onClose={() => setDrawer(null)}
           onDislike={dislikeProductCategory}
           onSave={openCollectionPicker}
+          onTooExpensive={markTooExpensive}
           product={drawer.product}
+          showPriceFeedback={page === "Scroll"}
           type={drawer.type}
         />
       )}

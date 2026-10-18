@@ -7,7 +7,7 @@ import ProductImage from "@/components/product-image/product-image";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
 import styles from "./product-drawer.module.css";
 
-export default function ProductDrawer({ product, type, onClose, onSave, onDislike }) {
+export default function ProductDrawer({ product, type, onClose, onSave, onDislike, onTooExpensive, showPriceFeedback }) {
   const reviewCount = Number.isInteger(product.reviews) && product.reviews > 0 ? product.reviews : 0;
   const rating = Number.isFinite(product.rating) ? product.rating.toFixed(1) : null;
   useEffect(() => {
@@ -97,13 +97,25 @@ export default function ProductDrawer({ product, type, onClose, onSave, onDislik
               Visit retailer <Icon name="arrowRight" size={17} />
             </Button>}
           </div>
-          {type === "details" && (product.mainCategory || product.category) && (
-            <div className={styles.feedbackAction}>
-              <Button onClick={() => onDislike(product)} variant="secondary">
-                <Icon name="x" size={16} /> I don&apos;t like this
-              </Button>
-              <p>We&apos;ll show you fewer {product.mainCategory || product.category} finds.</p>
-            </div>
+          {type === "details" && (
+            <>
+              {showPriceFeedback && (
+                <div className={styles.feedbackAction}>
+                  <Button onClick={() => onTooExpensive(product)} variant="secondary">
+                    <Icon name="x" size={16} /> Too expensive
+                  </Button>
+                  <p>We&apos;ll prioritize lower-priced finds.</p>
+                </div>
+              )}
+              {(product.mainCategory || product.category) && (
+                <div className={styles.feedbackAction}>
+                  <Button onClick={() => onDislike(product)} variant="secondary">
+                    <Icon name="x" size={16} /> I don&apos;t like this
+                  </Button>
+                  <p>We&apos;ll show you fewer {product.mainCategory || product.category} finds.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </aside>

@@ -8,7 +8,7 @@ import ProductImage from "@/components/product-image/product-image";
 import DiscoverInsights from "@/components/discover-insights/discover-insights";
 import styles from "./discover.module.css";
 
-export default function Discover({ products, product, nextProduct, profile, noMatches, canUndo, onTune, onFeedback, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved }) {
+export default function Discover({ products, product, nextProduct, profile, noMatches, canUndo, onTune, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved }) {
   const gesture = useRef(null);
   // motion is "" | "skip" | "like"
   const [motion, setMotion] = useState("");
@@ -88,9 +88,6 @@ export default function Discover({ products, product, nextProduct, profile, noMa
           <Button aria-label="Share product" disabled={Boolean(motion)} onClick={() => onShare(product)} variant="icon"><Icon name="share" size={18} /></Button>
         </div>
         <p className={styles.hint}><span>↑</span> Skip <span>↓</span> Back · Heart to like</p>
-        <details key={`feedback-${product.id}`} className={styles.feedback}><summary>Give feedback</summary><div>
-          {[['price', 'Too expensive'], ['category', 'Less from this category']].map(([reason, label]) => <Button key={reason} variant="secondary" disabled={Boolean(motion)} onClick={() => onFeedback(reason)}>{label}</Button>)}
-        </div><p>Feedback adjusts ranking. Your chosen filters stay the same.</p></details>
       </>}
     </section>
     <DiscoverInsights onNavigate={onNavigate} products={products} saved={saved} profile={profile} onTune={onTune} />
