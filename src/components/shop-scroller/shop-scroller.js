@@ -44,8 +44,7 @@ function errorMessage(error, fallback) {
   return typeof error?.message === "string" ? error.message : fallback;
 }
 
-function Sidebar({ page, username, count, catalogSize, cartCount }) {
-  const hasLikes = count > 0;
+function Sidebar({ page, username, cartCount }) {
   return (
     <aside className={styles.sidebar}>
       <Link aria-label="ShopScroll home" className={styles.brandHome} href="/discover">
@@ -65,21 +64,26 @@ function Sidebar({ page, username, count, catalogSize, cartCount }) {
           </Link>
         ))}
       </nav>
-      <Link className={styles.tasteCard} href="/taste-map">
-        <Icon name="sparkles" size={18} />
-        <strong>Your taste is taking shape</strong>
-        <p>{hasLikes ? `${count} like${count === 1 ? " is" : "s are"} shaping your recommendations.` : "Heart something to start shaping your recommendations."}</p>
-        <div>
-          <i style={{ width: `${Math.min((count / catalogSize) * 100, 100)}%` }} />
-        </div>
-      </Link>
-      <div className={styles.user}>
-        <div>{username.slice(0, 2).toUpperCase()}</div>
-        <span>
-          <strong>{username}</strong>
-          <small>Taste explorer</small>
-        </span>
-        <Icon name="more" size={18} />
+      <div className={styles.sidebarFooter}>
+        <Link
+          aria-current={page === "Taste Map" ? "page" : undefined}
+          className={`${styles.navLink} ${page === "Taste Map" ? styles.activeNav : ""}`}
+          href="/taste-map"
+        >
+          <Icon name="sparkles" size={19} />
+          <span>Taste Map</span>
+          {page === "Taste Map" && <i />}
+        </Link>
+        <Link
+          aria-current={page === "Profile" ? "page" : undefined}
+          className={styles.user}
+          href="/profile"
+        >
+          <span aria-hidden="true" className={styles.userAvatar}>
+            {username.slice(0, 2).toUpperCase()}
+          </span>
+          {username}
+        </Link>
       </div>
     </aside>
   );
@@ -588,7 +592,7 @@ export default function AppShell({
 
   return (
     <div className={`${styles.shell} ${page === "Scroll" || page === "Search Scroll" ? styles.scrollShell : ""}`}>
-      <Sidebar page={page} count={profile.likes.length} catalogSize={catalogProducts?.length || 100} cartCount={cart.length} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
+      <Sidebar page={page} cartCount={cart.length} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
       <main className={styles.main}>
         <Topbar
           onFriends={() => navigateTo("Friends")}

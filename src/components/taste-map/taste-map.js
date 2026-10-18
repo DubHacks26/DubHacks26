@@ -2,18 +2,46 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { getHashtagGraph } from "@/api/UserAPI";
+import { getHashtagAlignment, getHashtagGraph } from "@/api/UserAPI";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./taste-map.module.css";
 
 const MIN_EDGE_SIMILARITY = 0.55;
-const LABELS_ZOOM_RATIO = 0.45;
+const LABELS_ZOOM_RATIO = 0.0;
+const ALIGNMENT_SIZE_LOW_SIMILARITY = 0.15;
+const ALIGNMENT_SIZE_HIGH_SIMILARITY = 0.65;
+const ALIGNMENT_COLOR_THRESHOLD = 0.4;
+const ALIGNMENT_MAX_RADIUS = 3;
+const ALIGNMENT_BASE_NODE_VALUE = 0.9;
+const ALIGNMENT_LOW_COLOR = "#a2a3a8";
+const ALIGNMENT_HIGH_COLOR = "#6d3a63";
 
 function displayName(name) {
   return String(name || "Untitled")
     .replaceAll("_", " ")
     .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function alignmentStrength(similarity) {
+  const value = Number(similarity);
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0,
+    (value - ALIGNMENT_SIZE_LOW_SIMILARITY)
+    / (ALIGNMENT_SIZE_HIGH_SIMILARITY - ALIGNMENT_SIZE_LOW_SIMILARITY)));
+}
+
+function alignmentColor(similarity) {
+  const value = Number(similarity);
+  return Number.isFinite(value) && value >= ALIGNMENT_COLOR_THRESHOLD
+    ? ALIGNMENT_HIGH_COLOR
+    : ALIGNMENT_LOW_COLOR;
+}
+
+function alignmentNodeValue(similarity) {
+  const radiusScale = 1 + (ALIGNMENT_MAX_RADIUS - 1) * alignmentStrength(similarity);
+  // 3d-force-graph's nodeVal controls sphere volume, so cube the radius scale.
+  return ALIGNMENT_BASE_NODE_VALUE * radiusScale ** 3;
 }
 
 function normalizeGraph(graph) {
@@ -67,8 +95,19 @@ export default function TasteMap() {
   const [error, setError] = useState("");
   const [rendererError, setRendererError] = useState("");
   const [selectedId, setSelectedId] = useState(null);
+  const [alignmentMode, setAlignmentMode] = useState(false);
+  const [alignmentScores, setAlignmentScores] = useState(null);
+  const [alignmentHasInterests, setAlignmentHasInterests] = useState(null);
+  const [alignmentLoading, setAlignmentLoading] = useState(false);
+  const [alignmentError, setAlignmentError] = useState("");
+  const [hoverTarget, setHoverTarget] = useState(null);
 
   const refresh = useCallback(() => {
+    setAlignmentMode(false);
+    setAlignmentScores(null);
+    setAlignmentHasInterests(null);
+    setAlignmentError("");
+    setHoverTarget(null);
     setStatus("loading");
     setError("");
     getHashtagGraph()
@@ -81,6 +120,34 @@ export default function TasteMap() {
         setStatus("error");
       });
   }, []);
+
+  const toggleAlignment = useCallback(async () => {
+    if (alignmentMode) {
+      setAlignmentMode(false);
+      return;
+    }
+    if (alignmentScores) {
+      setAlignmentMode(true);
+      return;
+    }
+
+    setAlignmentLoading(true);
+    setAlignmentError("");
+    try {
+      const result = await getHashtagAlignment(graph.nodes.map(node => node.id));
+      const scores = Object.entries(result.scores || {}).map(([id, value]) => [
+        id,
+        value !== null && Number.isFinite(Number(value)) ? Number(value) : null,
+      ]);
+      setAlignmentScores(new Map(scores));
+      setAlignmentHasInterests(result.hasInterests === true);
+      setAlignmentMode(true);
+    } catch (requestError) {
+      setAlignmentError(requestError.response?.data?.error || requestError.message || "Taste alignment could not load.");
+    } finally {
+      setAlignmentLoading(false);
+    }
+  }, [alignmentMode, alignmentScores, graph.nodes]);
 
   useEffect(() => {
     Promise.resolve().then(refresh);
@@ -115,7 +182,24 @@ export default function TasteMap() {
         .linkWidth(link => 0.7 + Math.max(0, Number(link.similarity) || 0) * 1.8)
         .nodeLabel(node => `<strong>${displayName(node.name)}</strong><br />Related product idea`)
         .onNodeClick(node => setSelectedId(current => current === node.id ? null : node.id))
-        .onBackgroundClick(() => setSelectedId(null));
+        .onBackgroundClick(() => {
+          setSelectedId(null);
+          setHoverTarget(null);
+        })
+        .onNodeHover(node => {
+          const id = node?.id || null;
+          setHoverTarget(current => {
+            if (!id) return current?.type === "node" ? null : current;
+            return current?.type === "node" && current.id === id ? current : { type: "node", id };
+          });
+        })
+        .onLinkHover(link => {
+          const id = link ? linkId(link) : null;
+          setHoverTarget(current => {
+            if (!id) return current?.type === "link" ? null : current;
+            return current?.type === "link" && current.id === id ? current : { type: "link", id };
+          });
+        });
 
       controls = forceGraph.controls();
       controls.enablePan = true;
@@ -144,7 +228,7 @@ export default function TasteMap() {
 
         labelElements.forEach(element => { element.style.visibility = "hidden"; });
         for (const node of nearbyNodes) {
-          if (cameraPosition.distanceTo({ x: node.x, y: node.y, z: node.z }) > fitDistance * 0.72) continue;
+          if (cameraPosition.distanceTo({ x: node.x, y: node.y, z: node.z }) > fitDistance * 0.58) continue;
           const point = forceGraph.graph2ScreenCoords(node.x, node.y, node.z);
           if (point.x < 8 || point.x > width - 8 || point.y < 8 || point.y > height - 8) continue;
 
@@ -195,6 +279,28 @@ export default function TasteMap() {
   const selectedNeighbors = useMemo(() => new Set(graph.links
     .filter(link => link.source === selectedId || link.target === selectedId)
     .flatMap(link => [link.source, link.target])), [graph.links, selectedId]);
+  const hoverHighlight = useMemo(() => {
+    const nodes = new Set();
+    const links = new Set();
+    if (!hoverTarget) return { nodes, links };
+
+    if (hoverTarget.type === "node") {
+      nodes.add(hoverTarget.id);
+      for (const link of graph.links) {
+        if (link.source !== hoverTarget.id && link.target !== hoverTarget.id) continue;
+        nodes.add(link.source === hoverTarget.id ? link.target : link.source);
+        links.add(linkId(link));
+      }
+    } else {
+      const link = graph.links.find(candidate => linkId(candidate) === hoverTarget.id);
+      if (link) {
+        nodes.add(link.source);
+        nodes.add(link.target);
+        links.add(hoverTarget.id);
+      }
+    }
+    return { nodes, links };
+  }, [graph.links, hoverTarget]);
 
   useEffect(() => {
     const forceGraph = rendererRef.current;
@@ -229,37 +335,84 @@ export default function TasteMap() {
     if (!forceGraph || !rendererReady) return;
     forceGraph
       .nodeColor(node => {
+        if (hoverTarget && hoverHighlight.nodes.has(node.id)) {
+          return hoverTarget.type === "node" && node.id === hoverTarget.id ? "#e36f5e" : "#c27d3e";
+        }
+        if (hoverTarget) return alignmentMode ? alignmentColor(alignmentScores?.get(node.id)) : "#d7bfd3";
+        if (alignmentMode) {
+          return node.id === selectedId ? "#e36f5e" : alignmentColor(alignmentScores?.get(node.id));
+        }
         if (!selectedId || node.id === selectedId || selectedNeighbors.has(node.id)) return node.id === selectedId ? "#e36f5e" : "#8d4f86";
         return "#d7bfd3";
       })
-      .nodeVal(node => node.id === selectedId ? 2.4 : selectedNeighbors.has(node.id) ? 1.35 : 0.9)
+      .nodeVal(node => {
+        if (alignmentMode) return alignmentNodeValue(alignmentScores?.get(node.id));
+        if (hoverTarget && hoverHighlight.nodes.has(node.id)) {
+          const isHoveredNode = hoverTarget.type === "node" && node.id === hoverTarget.id;
+          return isHoveredNode ? 3 : 1.5;
+        }
+        return node.id === selectedId ? 2.4 : selectedNeighbors.has(node.id) ? 1.35 : 0.9;
+      })
       .linkColor(link => {
+        if (hoverHighlight.links.has(linkId(link))) return "#e36f5e";
+        if (hoverTarget) return "#e9dfe7";
         if (!selectedId || selectedLinks.has(linkId(link))) return "#a66a9f";
         return "#eadde7";
       })
-      .linkOpacity(selectedId ? 0.62 : 0.42)
+      .linkWidth(link => hoverHighlight.links.has(linkId(link))
+        ? 4
+        : 0.7 + Math.max(0, Number(link.similarity) || 0) * 1.8)
+      .linkDirectionalParticles(link => hoverHighlight.links.has(linkId(link)) ? 4 : 0)
+      .linkDirectionalParticleWidth(3)
+      .linkDirectionalParticleColor(() => "#e36f5e")
+      .linkOpacity(hoverTarget ? 0.55 : selectedId ? 0.62 : 0.42)
       .refresh();
-  }, [rendererReady, selectedId, selectedLinks, selectedNeighbors]);
+  }, [alignmentMode, alignmentScores, hoverHighlight, hoverTarget, rendererReady, selectedId, selectedLinks, selectedNeighbors]);
 
   return (
     <section className={styles.page} aria-labelledby="taste-map-title">
       <header className={styles.header}>
         <div>
           <Link className={styles.back} href="/discover"><Icon name="arrowLeft" size={16} /> Back to Discover</Link>
-          <p className="shop-kicker">Your taste map</p>
           <h1 id="taste-map-title">The ideas shaping your next find.</h1>
           <p>Related hashtags gather into neighborhoods. Rotate, pan, and zoom to explore the spaces between your product interests.</p>
         </div>
-        <Button disabled={status === "loading"} onClick={refresh} variant="secondary">
-          <Icon name="rotate" size={16} /> Refresh map
-        </Button>
       </header>
 
       <div className={styles.stats} aria-label="Taste map summary">
-        <span><b>{graph.nodes.length}</b> ideas</span>
-        <span><b>{graph.links.length}</b> relationships</span>
-        <span><Icon name="sparkles" size={15} /> semantic connections</span>
+        <Button
+          aria-pressed={alignmentMode}
+          disabled={status !== "ready" || !graph.nodes.length || alignmentLoading}
+          onClick={toggleAlignment}
+          variant={alignmentMode ? "primary" : "secondary"}
+        >
+          <Icon name="sparkles" size={16} />
+          {alignmentLoading ? "Measuring alignment…" : alignmentMode ? "Hide alignment" : "Show my alignment"}
+        </Button>
+        <Button disabled={status === "loading" || alignmentLoading} onClick={refresh} variant="secondary">
+          <Icon name="rotate" size={16} /> Refresh map
+        </Button>
       </div>
+
+      {alignmentError && <p className={styles.alignmentError} role="alert">{alignmentError}</p>}
+      {alignmentMode && <div className={styles.alignmentLegend} aria-live="polite">
+        <span><i className={styles.lowAlignmentDot} /> Below {ALIGNMENT_COLOR_THRESHOLD.toFixed(2)}</span>
+        <span><i className={styles.highAlignmentDot} /> At least {ALIGNMENT_COLOR_THRESHOLD.toFixed(2)}</span>
+        <span>Color marks the threshold; size scales with cosine match.</span>
+        {alignmentHasInterests === false && <span className={styles.alignmentHint}>Your taste profile is empty. Like or save products to start building it.</span>}
+      </div>}
+
+      {selected && <div className={styles.selectedSummary} aria-live="polite">
+        <div>
+          <span className="shop-kicker">Selected idea</span>
+          <strong>{displayName(selected.name)}</strong>
+          <span>{selectedNeighbors.size - 1} connected ideas</span>
+          {alignmentMode && <span>Cosine similarity: {Number.isFinite(alignmentScores?.get(selected.id))
+            ? alignmentScores.get(selected.id).toFixed(2)
+            : "Unavailable"}</span>}
+        </div>
+        <Button onClick={() => setSelectedId(null)} variant="secondary">Clear selection</Button>
+      </div>}
 
       <div className={styles.layout}>
         <div className={styles.mapPanel}>
@@ -277,26 +430,8 @@ export default function TasteMap() {
           {status === "loading" && !rendererError && <div className={styles.message} role="status"><span className={styles.spinner} /> Mapping your tastes…</div>}
           {(status === "error" || rendererError) && <div className={styles.message} role="alert"><Icon name="search" size={27} /><strong>Map unavailable</strong><span>{rendererError || error}</span><Button onClick={rendererError ? () => window.location.reload() : refresh}>Try again</Button></div>}
           {status === "ready" && !rendererError && !graph.nodes.length && <div className={styles.message}><Icon name="sparkles" size={28} /><strong>Your map is ready for its first connections.</strong><span>Browse a few products, then refresh this view once hashtags have been synced.</span></div>}
-          {status === "ready" && !rendererError && Boolean(graph.nodes.length) && <p className={styles.hint}><Icon name="rotate" size={15} /> Left drag rotates · right drag pans · zoom in to reveal labels</p>}
+          {status === "ready" && !rendererError && Boolean(graph.nodes.length) && <p className={styles.hint}><Icon name="rotate" size={15} /> Left drag rotates · right drag pans · scroll zooms</p>}
         </div>
-
-        <aside className={styles.details} aria-live="polite">
-          {selected ? <>
-            <p className="shop-kicker">Selected idea</p>
-            <h2>{displayName(selected.name)}</h2>
-            <p>Connected to <strong>{selectedNeighbors.size - 1}</strong> ideas in this part of your map.</p>
-            <div className={styles.detailRule} />
-            <p className={styles.detailNote}>Connections represent semantic similarity between product hashtags, not products you have purchased.</p>
-            <Button onClick={() => setSelectedId(null)} variant="secondary">Clear selection</Button>
-          </> : <>
-            <Icon className={styles.detailIcon} name="sparkles" size={25} />
-            <p className="shop-kicker">Explore</p>
-            <h2>Turn your taste into a constellation.</h2>
-            <p>Select any idea to highlight its closest semantic neighbors.</p>
-            <div className={styles.detailRule} />
-            <p className={styles.detailNote}>The 3D graph supports orbiting, panning, and zooming so dense neighborhoods remain explorable.</p>
-          </>}
-        </aside>
       </div>
     </section>
   );

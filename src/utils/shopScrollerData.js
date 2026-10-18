@@ -77,7 +77,6 @@ export const navItems = [
   { label: "Cart", href: "/cart", icon: "cart" },
   { label: "Budget", href: "/budget", icon: "wallet" },
   { label: "Friends", href: "/friends", icon: "users" },
-  { label: "Profile", href: "/profile", icon: "user" },
 ];
 
 export const categoryBreakdown = [

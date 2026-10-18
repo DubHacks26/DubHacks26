@@ -157,6 +157,11 @@ async function signOut() {
   }
 }
 
+async function getHashtagAlignment(nodeIds = []) {
+  const response = await AxiosInstance.post('/hashtags/alignment', { nodeIds });
+  return response.data || { hasInterests: false, scores: {} };
+}
+
 export {
   getCatalogProducts,
   getHashtagGraph,
@@ -174,6 +179,7 @@ export {
   onAuthStateChange,
   recordSemanticInteraction,
   recordPositiveInteraction,
+  getHashtagAlignment,
   signIn,
   signOut,
   signUp,
