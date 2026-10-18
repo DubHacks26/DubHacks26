@@ -18,6 +18,36 @@
   outline: none;
 }
 
+.searchExperience .viewport {
+  inset-block-start: 52px;
+}
+
+.searchModeBar {
+  position: absolute;
+  z-index: 4;
+  inset: 0 0 auto;
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 1rem;
+  background: rgb(252 251 249 / 94%);
+  color: var(--ink);
+  font-size: 0.78rem;
+  backdrop-filter: blur(10px);
+}
+
+.searchModeBar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchModeBar button {
+  flex: none;
+}
+
 .dragging {
   cursor: grabbing;
 }
@@ -527,6 +557,19 @@
     height: 100%;
     max-width: none;
     aspect-ratio: auto;
+  }
+  .searchExperience .viewport {
+    inset-block-start: 52px;
+  }
+  .searchModeBar {
+    min-height: 52px;
+    padding-inline: 0.65rem;
+    font-size: 0.68rem;
+  }
+  .searchModeBar button {
+    min-height: 36px;
+    padding-inline: 0.65rem;
+    font-size: 0.68rem;
   }
   .card {
     border-radius: 0;

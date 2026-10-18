@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { productChips } from "@/utils/feed.mjs";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
-import { refreshScrollQueue } from "@/utils/scroll-queue.mjs";
+import {
+  reorderRemainingScrollQueue,
+  refreshScrollQueue,
+} from "@/utils/scroll-queue.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
@@ -52,6 +55,9 @@ export default function ProductScroll({
   loading = false,
   error = "",
   onRetry,
+  reorderUnseen = false,
+  searchQuery = "",
+  onExitSearch,
 }) {
   const [queue, setQueue] = useState(() => incomingProducts);
   const [cursor, setCursor] = useState(0);
@@ -81,15 +87,18 @@ export default function ProductScroll({
 
   useEffect(() => {
     let active = true;
-    // Apply new rankings to upcoming cards without moving the visible card
-    // or changing the history when the user scrolls back.
+    // Keep the active card stable; search mode can personalize only what remains.
     Promise.resolve().then(() => {
-      if (active) setQueue(queue => refreshScrollQueue(queue, incomingProducts, visitedThrough.current));
+      if (active) {
+        setQueue(queue => reorderUnseen
+          ? reorderRemainingScrollQueue(queue, incomingProducts, cursor)
+          : refreshScrollQueue(queue, incomingProducts, visitedThrough.current));
+      }
     });
     return () => {
       active = false;
     };
-  }, [incomingProducts]);
+  }, [cursor, incomingProducts, reorderUnseen]);
 
   // Render the first server-loaded batch immediately; later batches enter via
   // the stable queue above.
@@ -358,7 +367,16 @@ export default function ProductScroll({
   const trackOffset = drag.axis === "y" ? drag.y * (edgeDrag ? EDGE_RESISTANCE : 1) : 0;
 
   return (
-    <section className={styles.experience} aria-label="ShopScroll product feed">
+    <section
+      className={`${styles.experience} ${searchQuery ? styles.searchExperience : ""}`}
+      aria-label={searchQuery ? `Products matching ${searchQuery}` : "ShopScroll product feed"}
+    >
+      {searchQuery && (
+        <div className={styles.searchModeBar}>
+          <span>Search scroll <strong>“{searchQuery}”</strong></span>
+          <Button onClick={onExitSearch} variant="secondary">Back to your feed</Button>
+        </div>
+      )}
       <div
         aria-label="Product feed. Swipe or scroll vertically for the next item. Swipe sideways or press H to heart."
         className={`${styles.viewport} ${drag.axis ? styles.dragging : ""}`}

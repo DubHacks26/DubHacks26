@@ -25,11 +25,7 @@ function SearchResultsContent({ submittedQuery, onSelect, onLearned }) {
         if (!active || currentRequest !== requestId.current) return;
         const results = (response.products || []).map(normalizeCatalogProduct);
         if (response.learned) onLearned?.();
-        const message = results.length
-          ? response.learned
-            ? "This search will gently guide your recommendations."
-            : "Matches based on meaning, not just exact words."
-          : "No close matches yet. Try a different search.";
+        const message = results.length ? "" : "No close matches yet. Try a different search.";
         setResult({ query: submittedQuery, products: results, message });
       })
       .catch((error) => {
@@ -63,7 +59,7 @@ function SearchResultsContent({ submittedQuery, onSelect, onLearned }) {
       <div className={styles.heading}>
         <p className="shop-kicker">Discover</p>
         <h1>Search products</h1>
-        <p>Find products by what you mean, not just the exact words.</p>
+        <p>Search by product name, category, or description.</p>
       </div>
       <form className={styles.form} onSubmit={submitSearch}>
         <Icon name="search" size={19} />
@@ -85,6 +81,18 @@ function SearchResultsContent({ submittedQuery, onSelect, onLearned }) {
           </div>
           {loading && <p className={styles.status} role="status">Finding similar products…</p>}
           {!loading && message && <p className={styles.status} role="status">{message}</p>}
+          {!loading && products.length > 0 && (
+            <div className={styles.scrollAction}>
+              <p>Want to browse one at a time?</p>
+              <Button
+                onClick={() => router.push(`/search/scroll?query=${encodeURIComponent(submittedQuery)}`)}
+                variant="primary"
+              >
+                Scroll these results
+                <Icon name="arrowRight" size={17} />
+              </Button>
+            </div>
+          )}
           <div className={styles.grid}>
             {products.map((product) => (
               <button

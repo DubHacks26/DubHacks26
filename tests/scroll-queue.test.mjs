@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createProfile, getFeed, normalizeProduct, recordAction } from "../src/utils/feed.mjs";
-import { refreshScrollQueue } from "../src/utils/scroll-queue.mjs";
+import {
+  reorderRemainingScrollQueue,
+  refreshScrollQueue,
+} from "../src/utils/scroll-queue.mjs";
 
 test("refreshing recommendations preserves the current card and prioritizes incoming candidates", () => {
   const first = { id: "first", image: "first.jpg" };
@@ -64,4 +67,30 @@ test("liking a card promotes related products in the active scroll session", () 
   const queue = refreshScrollQueue(products, recommendations);
   assert.equal(queue[0], products[0]);
   assert.equal(queue[1], products[2]);
+});
+
+test("search feedback reorders only unseen products and keeps the active card stable", () => {
+  const first = { id: "first", rank: 1 };
+  const active = { id: "active", rank: 2 };
+  const third = { id: "third", rank: 3 };
+  const fourth = { id: "fourth", rank: 4 };
+
+  const queue = reorderRemainingScrollQueue(
+    [first, active, third, fourth],
+    [fourth, active, third, first],
+    1,
+  );
+
+  assert.deepEqual(queue, [first, active, fourth, third]);
+});
+
+test("search reordering only replaces unseen cards with supplied search results", () => {
+  const matching = { id: "matching" };
+  const active = { id: "active" };
+  const staleUnseen = { id: "stale-unseen" };
+
+  assert.deepEqual(
+    reorderRemainingScrollQueue([active, staleUnseen], [matching], 0),
+    [active, matching],
+  );
 });

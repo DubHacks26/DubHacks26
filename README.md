@@ -176,6 +176,12 @@ Authenticated Express routes (Bearer Supabase access token):
   preferences; `POST /user/search` performs the same search and weakly learns
   from its closest confident result.
 
+Search results can be opened as a dedicated search scroll at
+`/search/scroll?query=...`. That feed contains only the semantic matches for
+the query; likes, skips, and dwell time update the same preference model as
+the regular feed. As feedback arrives, only unseen matches are re-ranked, and
+the in-feed button returns to the regular personalized Scroll.
+
 The Discover and Scroll experiences call these routes. The feed ranks products
 using four personal signals—main category (10%), subcategory (20%), hashtags
 (35%), and semantic title similarity (35%)—then blends that score with soft

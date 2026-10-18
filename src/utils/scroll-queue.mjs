@@ -24,3 +24,16 @@ export function refreshScrollQueue(queue = [], candidates = [], visitedThrough =
     ? currentQueue
     : refreshed;
 }
+
+export function reorderRemainingScrollQueue(queue = [], candidates = [], currentIndex = 0) {
+  const currentQueue = Array.isArray(queue) ? queue : [];
+  const incoming = Array.isArray(candidates) ? candidates : [];
+
+  if (!currentQueue.length) return incoming;
+
+  const pinned = currentQueue.slice(0, Math.max(0, currentIndex) + 1);
+  const pinnedIds = new Set(pinned.map(product => product?.id));
+  const remaining = incoming.filter(product => product?.id && !pinnedIds.has(product.id));
+
+  return [...pinned, ...remaining];
+}

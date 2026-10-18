@@ -31,6 +31,7 @@ const SearchResults = dynamic(() => import("@/components/search-results/search-r
 // Next's server render so the browser is always responsible for initializing
 // its WebGL canvas.
 const TasteMap = dynamic(() => import("@/components/taste-map/taste-map"), { ssr: false });
+const SearchScroll = dynamic(() => import("@/components/search-scroll/search-scroll"));
 
 function errorMessage(error, fallback) {
   const responseError = error?.response?.data?.error;
@@ -123,7 +124,10 @@ export default function AppShell({
   const collectionId = pathname.startsWith("/collections/")
     ? decodeURIComponent(pathname.slice("/collections/".length).split("/")[0])
     : null;
-  const page = pathname === "/search"
+  const searchScrollMode = pathname === "/search/scroll";
+  const page = searchScrollMode
+    ? "Scroll"
+    : pathname === "/search"
     ? "Search"
     : pathname === "/taste-map"
       ? "Taste Map"
@@ -492,6 +496,21 @@ export default function AppShell({
         saved={saved}
       />
     );
+  else if (searchScrollMode)
+    content = (
+      <Suspense fallback={<p role="status">Loading your search scroll…</p>}>
+        <SearchScroll
+          historyProducts={historyProducts}
+          onDetails={(product, type) => setDrawer({ product, type })}
+          onHeart={heartFromScroll}
+          onSave={openCollectionPicker}
+          onShare={shareProduct}
+          onSkip={(product, context) => persistAction(product, "skip", null, undefined, context)}
+          profile={profile}
+          saved={saved}
+        />
+      </Suspense>
+    );
   else if (page === "Scroll")
     content = (
       <ProductScroll
@@ -554,13 +573,13 @@ export default function AppShell({
   else content = <Profile profile={profile} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} onTune={() => setTuning(true)} />;
 
   return (
-    <div className={`${styles.shell} ${page === "Scroll" ? styles.scrollShell : ""}`}>
+    <div className={`${styles.shell} ${page === "Scroll" || page === "Search Scroll" ? styles.scrollShell : ""}`}>
       <Sidebar page={page} count={profile.likes.length} catalogSize={catalogProducts?.length || 100} cartCount={cart.length} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
       <main className={styles.main}>
         <Topbar
           onMessages={() => navigateTo("Friends")}
           onSearch={() => setSearchOpen(true)}
-          scrollMode={page === "Scroll"}
+          scrollMode={page === "Scroll" || page === "Search Scroll"}
         />
         {content}
       </main>

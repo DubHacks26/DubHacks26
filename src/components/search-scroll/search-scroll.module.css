@@ -1,0 +1,44 @@
+.message {
+  display: flex;
+  min-height: calc(100vh - 60px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 2rem 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+}
+
+.message > svg {
+  color: var(--plum);
+}
+
+.message h1 {
+  max-width: 32rem;
+  margin: 0;
+  font: 2.5rem "Instrument Serif", Georgia, serif;
+}
+
+.message > p:not(.shop-kicker) {
+  max-width: 28rem;
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.spinner {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 2px solid rgb(109 58 99 / 18%);
+  border-top-color: var(--plum);
+  border-radius: 50%;
+  animation: spin 750ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

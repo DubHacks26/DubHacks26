@@ -73,7 +73,6 @@ export const products = demoProducts.map(normalizeProduct);
 export const navItems = [
   { label: "Home", href: "/discover", icon: "compass" },
   { label: "Scroll", href: "/scroll", icon: "scroll" },
-  { label: "Missions", href: "/missions", icon: "target" },
   { label: "Collections", href: "/collections", icon: "layers" },
   { label: "Cart", href: "/cart", icon: "cart" },
   { label: "Budget", href: "/budget", icon: "wallet" },

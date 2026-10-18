@@ -66,6 +66,22 @@
   color: var(--muted);
   font-size: 0.75rem;
 }
+.scrollAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+}
+.scrollAction p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
 .status {
   margin: 0 0 1rem;
   line-height: 1.5;
@@ -136,5 +152,16 @@
   }
   .form {
     margin: 1.2rem auto 2rem;
+  }
+  .resultHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .scrollAction {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .scrollAction button {
+    width: 100%;
   }
 }
