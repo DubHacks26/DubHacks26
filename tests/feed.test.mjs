@@ -53,14 +53,17 @@ test("catalog rows normalize ASIN, categories, hashtags, and cents", () => {
   const product = catalog[0];
   assert.equal(product.id, "A000000001");
   assert.equal(product.category, "Hobbies, toys & entertainment");
+  assert.equal(product.mainCategory, "Hobbies, toys & entertainment");
   assert.equal(product.subcategory, "DIY craft kits");
   assert.deepEqual(product.hashtags, ["diy-craft-kits", "clay-charms", "craft"]);
   assert.equal(product.price, 25);
   assert.equal(normalizeTag("#Coffee_Accessories"), "coffee-accessories");
   assert.deepEqual(normalizeProduct({
+    category: "Inferred category",
     hashtags: '["#coffee_maker"]',
     main_category: null,
   }).hashtags, ["coffee-maker"]);
+  assert.equal(normalizeProduct({ category: "Inferred category" }).mainCategory, null);
 });
 
 test("likes rank related subcategories, hashtags, and titles more highly", () => {

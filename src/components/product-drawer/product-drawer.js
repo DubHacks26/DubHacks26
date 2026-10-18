@@ -10,6 +10,8 @@ import styles from "./product-drawer.module.css";
 export default function ProductDrawer({ product, type, onClose, onSave, onDislike, onTooExpensive, onAddToCart, inCart, canAddToCart, showCartActions, showPriceFeedback }) {
   const reviewCount = Number.isInteger(product.reviews) && product.reviews > 0 ? product.reviews : 0;
   const rating = Number.isFinite(product.rating) ? product.rating.toFixed(1) : null;
+  const hashtags = [...new Set(product.hashtags || product.tags || [])];
+  const mainCategory = product.mainCategory;
   useEffect(() => {
     const closeOnEscape = (event) => {
       if (event.key === "Escape") onClose();
@@ -45,9 +47,7 @@ export default function ProductDrawer({ product, type, onClose, onSave, onDislik
           src={product.image}
         />
         <div className={styles.body}>
-          <p className="shop-kicker">
-            {product.brand} · {product.category}
-          </p>
+          <p className="shop-kicker">{product.brand}</p>
           <h2>{product.name}</h2>
           <div className={styles.rating}>
             <strong>{formatProductPrice(product.price)}</strong>
@@ -58,6 +58,27 @@ export default function ProductDrawer({ product, type, onClose, onSave, onDislik
           {type === "details" ? (
             <>
               <p>{product.description}</p>
+              <h3>Category &amp; tags</h3>
+              <dl className={styles.productMetadata}>
+                <div>
+                  <dt>Category</dt>
+                  <dd>{mainCategory || "Not listed for this item"}</dd>
+                </div>
+                <div>
+                  <dt>Subcategory</dt>
+                  <dd>{product.subcategory || "Not listed for this item"}</dd>
+                </div>
+                {hashtags.length > 0 && (
+                  <div>
+                    <dt>Tags</dt>
+                    <dd className={styles.hashtags}>
+                      {hashtags.map((tag) => (
+                        <span key={tag}>#{tag.replace(/^#/, "")}</span>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+              </dl>
               <h3>About this find</h3>
               <div className={styles.note}>
                 <Icon name="sparkles" size={18} />

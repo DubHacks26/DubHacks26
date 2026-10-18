@@ -153,7 +153,7 @@ function categoryMatches(preference, candidate) {
 export function normalizeProduct(raw = {}) {
   const sourceMainCategory = raw.main_category || raw.mainCategory || null;
   const sourceCategory = raw.category || sourceMainCategory || null;
-  const mainCategory = sourceMainCategory || sourceCategory;
+  const mainCategory = sourceMainCategory;
   const hashtags = [...new Set(
     [...parseList(raw.hashtags), ...parseList(raw.tags)]
       .map(normalizeTag)
