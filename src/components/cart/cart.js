@@ -14,8 +14,7 @@ export default function Cart({ items = [], loading = false, onRemove, onShop }) 
     <section className="shop-page">
       <PageHeader
         description="Review your picks, see the listed-price total, and continue to Amazon for each item."
-        eyebrow="Your cart"
-        title="Cart"
+        title="Your Cart"
       />
       {loading ? (
         <p className="shop-panel" role="status">Loading your cart…</p>

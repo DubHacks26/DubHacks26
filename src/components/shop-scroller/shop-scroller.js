@@ -95,7 +95,6 @@ function Topbar({ onSearch, onFriends, scrollMode }) {
       <Button className={styles.search} onClick={onSearch} variant="secondary">
         <Icon name="search" size={18} />
         <span>What are you looking for?</span>
-        <kbd>⌘ K</kbd>
       </Button>
       <Button
         aria-label="Friends"
@@ -135,6 +134,8 @@ export default function AppShell({
     ? "Search"
     : pathname === "/taste-map"
       ? "Taste Map"
+      : pathname === "/profile"
+        ? "Profile"
       : collectionId ? "Collections" : navItems.find(item => item.href === pathname)?.label || initialPage;
   const [catalogProducts, setCatalogProducts] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(true);

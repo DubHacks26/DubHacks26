@@ -63,7 +63,6 @@ export default function Collections({
             </Button>
           }
           description="Keep the products you love organized in one place."
-          eyebrow="Your saved finds"
           title="Collections"
         />
       )}

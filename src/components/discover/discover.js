@@ -68,11 +68,11 @@ export default function Discover({ products, product, nextProduct, profile, noMa
   return <div className={styles.home}>
     <header className={styles.homeHeader}>
       <div>
-        <p className="shop-kicker">Welcome back</p>
         <h1>Home</h1>
       </div>
       <div className={styles.homeActions}>
         <Button onClick={onCart} variant="secondary"><Icon name="bag" size={16} /> Cart{cart.length ? ` (${cart.length})` : ""}</Button>
+        <Button onClick={() => onNavigate("Scroll")}><Icon name="scroll" size={16} /> Start scrolling</Button>
       </div>
     </header>
     <div className={styles.grid}>
@@ -81,7 +81,7 @@ export default function Discover({ products, product, nextProduct, profile, noMa
       <BudgetPreview categories={categorySpend} plannedSpend={plannedSpend} onOpen={onBudget} />
       <section className={styles.finds}>
       <header className={styles.heading}>
-        <div><p className="shop-kicker">Curated for you</p><h1>Today&apos;s finds</h1></div>
+        <div><h1>Today&apos;s finds</h1></div>
         <Button className={styles.tuneButton} onClick={onTune} variant="secondary"><Icon name="sparkles" size={16} /> Tune my feed</Button>
       </header>
       {!product ? <div className={styles.empty} role="status">
@@ -169,7 +169,7 @@ function BudgetPreview({ categories, plannedSpend, onOpen }) {
   const categoryRows = Object.entries(categories).sort(([, a], [, b]) => b - a).slice(0, 3);
   return <section className={styles.dashboardSection}>
     <header className={styles.sectionHeader}>
-      <div><p className="shop-kicker">This month</p><h2>Budget &amp; estimated spend</h2></div>
+      <div><h2>Budget &amp; estimated spend</h2></div>
       <Button className={styles.sectionAction} onClick={onOpen} variant="ghost">Budget <Icon name="arrowRight" size={15} /></Button>
     </header>
     <div className={styles.budgetCard}>

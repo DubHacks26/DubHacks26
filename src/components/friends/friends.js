@@ -113,7 +113,6 @@ export default function Friends() {
     <section className="shop-page">
       <PageHeader
         description="Find people by username, connect, and share products you think they’ll love."
-        eyebrow="Your circle"
         title="Friends"
       />
       {error && <p className={styles.noticeError} role="alert">{error}</p>}

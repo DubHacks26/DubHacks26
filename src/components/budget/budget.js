@@ -45,8 +45,7 @@ export default function Budget({
     <section className="shop-page">
       <PageHeader
         description="Track the listed-price total of products you have added to your cart."
-        eyebrow="Spend with intention"
-        title="Your cart, your budget."
+        title="Personal Budget."
       />
       <div className={styles.hero}>
         <div>
