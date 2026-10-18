@@ -110,7 +110,8 @@ export default function AppShell({ profile, setProfile, user }) {
     setProfile(current => recordAction(current, currentProduct.id, action));
     showToast(action === "like" ? "Liked. More finds like this, without adding to your wishlist." : action === "skip" ? "Skipped for now." : "Feedback noted. Similar finds will rank lower. Undo is available.");
   };
-  const swipe = direction => act(direction === "right" ? "like" : "skip");
+  // Discover now passes "like" or "skip" directly (swipe up = skip, heart = like).
+  const swipe = direction => act(direction);
 
   useEffect(() => {
     const openSearch = (event) => {
