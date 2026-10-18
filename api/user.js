@@ -29,7 +29,7 @@ async function handleRecommendations(req, res) {
   const candidates = (data || []).filter(product => Number.isFinite(product.similarity));
   if (!candidates.length) return res.json({ products: [] });
   const { data: details, error: detailsError } = await client.from('catalog_products')
-    .select('asin,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
+    .select('asin,title_embedding,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
     .in('asin', candidates.map(product => product.asin));
   if (detailsError) {
     console.error('Recommendation metadata lookup failed:', detailsError);
@@ -52,12 +52,33 @@ async function handleCatalog(req, res) {
     return res.status(400).json({ error: 'Limit must be between 1 and 100.' });
   }
   const { data, error } = await client.from('catalog_products')
-    .select('asin,title,brand,summary,image_url,product_url,price_cents,rating,review_count,categories,hashtags,tags,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
+    .select('asin,title,title_embedding,brand,summary,image_url,product_url,price_cents,rating,review_count,categories,hashtags,tags,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
     .order('asin', { ascending: true })
     .limit(limit);
   if (error) {
     console.error('Catalog lookup failed:', error);
     return res.status(503).json({ error: 'The product catalog is temporarily unavailable.' });
+  }
+  return res.json({ products: data || [] });
+}
+
+async function handleHistoryProducts(req, res) {
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const rawAsins = req.query.asins;
+  if (typeof rawAsins !== 'string' || !rawAsins.trim()) {
+    return res.status(400).json({ error: 'Provide one or more catalog ASINs.' });
+  }
+  const asins = [...new Set(rawAsins.split(',').map(asin => asin.trim()))];
+  if (asins.length > 100 || asins.some(asin => !/^[A-Z0-9]{10}$/.test(asin))) {
+    return res.status(400).json({ error: 'Provide up to 100 valid catalog ASINs.' });
+  }
+  const { data, error } = await client.from('catalog_products')
+    .select('asin,title,title_embedding,brand,summary,image_url,product_url,price_cents,rating,review_count,availability,hashtags,main_category,subcategory,bought_in_past_month')
+    .in('asin', asins);
+  if (error) {
+    console.error('Interaction history product lookup failed:', error);
+    return res.status(503).json({ error: 'Saved product details are temporarily unavailable.' });
   }
   return res.json({ products: data || [] });
 }
@@ -85,6 +106,7 @@ async function handleInteraction(req, res) {
 }
 
 Router.get('/catalog', handleCatalog);
+Router.get('/history-products', handleHistoryProducts);
 Router.get('/recommendations', handleRecommendations);
 Router.post('/interactions', handleInteraction);
 
@@ -92,4 +114,10 @@ Router.get('/user', async (req, res) => {
   return res.status(200).json({ message: 'User route is working!' });
 });
 
-module.exports = { Router, handleCatalog, handleRecommendations, handleInteraction };
+module.exports = {
+  Router,
+  handleCatalog,
+  handleHistoryProducts,
+  handleRecommendations,
+  handleInteraction,
+};
