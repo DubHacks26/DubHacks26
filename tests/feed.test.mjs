@@ -254,6 +254,41 @@ test("skip and show-less are negative, recency-weighted preference events", () =
   assert.equal(getFeed(catalog, profile).length, 1);
 });
 
+test("explicit dislike strongly lowers same-category products without filtering them out", () => {
+  const disliked = normalizeProduct({
+    asin: "A000000040",
+    title: "Yoga mat",
+    main_category: "Fitness & outdoors",
+    price: 25,
+  });
+  const sameCategory = normalizeProduct({
+    asin: "A000000041",
+    title: "Hiking backpack",
+    main_category: "Fitness & outdoors",
+    price: 25,
+  });
+  const otherCategory = normalizeProduct({
+    asin: "A000000042",
+    title: "Face cleanser",
+    main_category: "Beauty & personal care",
+    price: 25,
+  });
+  const now = Date.parse("2026-10-20T00:00:00.000Z");
+  const profile = recordAction(createProfile(), disliked.id, "less_category", {
+    id: "dislike-fitness",
+    createdAt: "2026-10-20T00:00:00.000Z",
+  });
+
+  assert.ok(
+    score(sameCategory, profile, [disliked, sameCategory, otherCategory], now)
+      < score(otherCategory, profile, [disliked, sameCategory, otherCategory], now) - 0.15,
+  );
+  assert.ok(
+    getFeed([disliked, sameCategory, otherCategory], profile, now)
+      .some((product) => product.id === sameCategory.id),
+  );
+});
+
 test("save and unsave update the wishlist without marking products seen", () => {
   let profile = recordAction(createProfile(), catalog[0].id, "save", {
     id: "save-1",

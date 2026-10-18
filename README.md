@@ -54,6 +54,21 @@ writing any data with:
 npm run import:capture -- --dry-run
 ```
 
+## Personalized feed
+
+The personalized feed reads products from `catalog_products` and saves each
+account's preferences and product actions in Supabase. Before using it, apply
+the migrations to the linked project:
+
+```bash
+npm run supabase:push
+```
+
+The feed migration adds the category fields and creates the per-user preference
+and interaction tables with row-level security. Product actions are retained
+across sign-ins and used to rank the feed; the current seen-card position is
+session-only.
+
 ## Generating local-LLM hashtags
 
 The catalog has a separate `hashtags` column for LLM-generated discovery tags;
@@ -152,7 +167,10 @@ title score is lexical word overlap, not title embeddings. Product actions are
 saved per account in `product_interactions`; preferences are saved in
 `user_feed_preferences`. Likes and saves update the separate five-slot positive
 interest model, while skips, unlikes, and feedback remain explicit weighted
-events for local ranking. Interaction influence decays with a 30-day half-life.
+events for local ranking. “I don't like this” in product details records a
+strong, 30-day-decaying penalty for that product's main category; it lowers
+similar-category ranking without removing those products from the catalog.
+Interaction influence decays with a 30-day half-life.
 Already-seen products are excluded only for the current session; their feedback
 continues to personalize later sessions.
 

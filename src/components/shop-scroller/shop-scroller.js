@@ -237,6 +237,12 @@ export default function AppShell({
     );
   };
 
+  const dislikeProductCategory = (product) => {
+    const category = product.mainCategory || product.category;
+    persistAction(product, "less_category", `Got it. We’ll show you fewer ${category} finds.`);
+    setDrawer(null);
+  };
+
   const resetPreferences = () => {
     onUpdatePreferences({ ...defaultPreferences, categories: [] })
       .then(() => {
@@ -377,6 +383,7 @@ export default function AppShell({
       {drawer && (
         <ProductDrawer
           onClose={() => setDrawer(null)}
+          onDislike={dislikeProductCategory}
           onSave={toggleSaved}
           product={drawer.product}
           type={drawer.type}

@@ -499,12 +499,23 @@ function buildContext(catalog, now) {
 }
 
 function scoreWithContext(product, profile, context) {
-  return weightedAvailableScore([
+  const baseScore = weightedAvailableScore([
     { value: personalScoreWithContext(product, profile, context), weight: overallWeights.personal },
     { value: priceScore(product, profile, context), weight: overallWeights.price },
     { value: qualityScore(product, context.ratingPrior), weight: overallWeights.quality },
     { value: popularityScore(product), weight: overallWeights.popularity },
   ]);
+  const productCategory = product.mainCategory || product.category;
+  const categoryDislikes = profile.events.reduce((total, event) => {
+    if (event.action !== "less_category") return total;
+    const source = context.productById.get(event.productId);
+    const sourceCategory = source?.mainCategory || source?.category;
+    return categoryMatches(sourceCategory, productCategory)
+      ? total + recency(event, context.now)
+      : total;
+  }, 0);
+  const categoryPenalty = 0.35 * (1 - Math.exp(-2 * categoryDislikes));
+  return Math.max(0, baseScore - categoryPenalty);
 }
 
 export function score(product, profile, catalog, now = Date.now()) {

@@ -7,7 +7,6 @@ create table if not exists public.account_usernames (
 alter table public.account_usernames enable row level security;
 revoke all on public.account_usernames from anon, authenticated;
 grant select on public.account_usernames to service_role;
-
 create or replace function public.sync_account_username()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin

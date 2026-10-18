@@ -24,15 +24,11 @@ create table if not exists public.catalog_products (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
 create index if not exists catalog_products_last_seen_at_idx
   on public.catalog_products (last_seen_at desc);
-
 create index if not exists catalog_products_categories_idx
   on public.catalog_products using gin (categories);
-
 alter table public.catalog_products enable row level security;
-
 create or replace function public.set_catalog_products_updated_at()
 returns trigger
 language plpgsql
@@ -43,13 +39,10 @@ begin
   return new;
 end;
 $$;
-
 revoke all on function public.set_catalog_products_updated_at() from public;
-
 drop trigger if exists set_catalog_products_updated_at on public.catalog_products;
 create trigger set_catalog_products_updated_at
 before update on public.catalog_products
 for each row execute function public.set_catalog_products_updated_at();
-
 revoke all on table public.catalog_products from anon, authenticated;
 grant select, insert, update, delete on table public.catalog_products to service_role;
