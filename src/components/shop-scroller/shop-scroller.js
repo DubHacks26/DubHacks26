@@ -148,9 +148,9 @@ export default function AppShell({
   }, [searchableProducts, profile.seen]);
   const currentProduct = feed[0];
   const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
-  // Scroll is an intentional, stable reel. Feedback can improve Discover
-  // without reordering or removing cards underneath an in-progress gesture.
-  const scrollProducts = products;
+  // Scroll consumes the same ranked, unseen feed as Discover. ProductScroll
+  // keeps its own cursor, so the current card remains stable during a gesture.
+  const scrollProducts = feed;
   const [tuning, setTuning] = useState(false);
 
   const [lastSwipe, setLastSwipe] = useState(null);

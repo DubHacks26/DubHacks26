@@ -11,7 +11,8 @@ import styles from "./product-scroll.module.css";
 const AXIS_LOCK = 12;
 const HEART_DISTANCE = 90;
 const HORIZONTAL_WHEEL_DISTANCE = 180;
-const WHEEL_COOLDOWN = 650;
+const PAGE_TRANSITION_DURATION = 420;
+const WHEEL_IDLE_DELAY = 140;
 const EDGE_RESISTANCE = 0.24;
 const SWIPE_EXIT_DURATION = 380;
 
@@ -21,6 +22,21 @@ function clamp(value, min, max) {
 
 function titleCase(value) {
   return String(value).replace(/[_-]+/g, " ").replace(/(^|\s)\w/g, letter => letter.toUpperCase());
+}
+
+function scheduleWheelUnlock(timer, lockUntil, lastAt, lock) {
+  window.clearTimeout(timer.current);
+  const now = performance.now();
+  const untilAnimationEnds = Math.max(0, lockUntil.current - now);
+  const untilGestureEnds = Math.max(0, WHEEL_IDLE_DELAY - (now - lastAt.current));
+  timer.current = window.setTimeout(() => {
+    const currentTime = performance.now();
+    if (currentTime < lockUntil.current || currentTime - lastAt.current < WHEEL_IDLE_DELAY) {
+      scheduleWheelUnlock(timer, lockUntil, lastAt, lock);
+    } else {
+      lock.current = false;
+    }
+  }, Math.max(untilAnimationEnds, untilGestureEnds));
 }
 
 export default function ProductScroll({
@@ -45,7 +61,8 @@ export default function ProductScroll({
   const [boundaryMessage, setBoundaryMessage] = useState("");
   const gesture = useRef(null);
   const wheelLock = useRef(false);
-  const wheelLockAt = useRef(0);
+  const wheelLockUntil = useRef(0);
+  const wheelLastAt = useRef(0);
   const wheelX = useRef(0);
   const wheelXTimer = useRef(null);
   const wheelUnlockTimer = useRef(null);
@@ -55,6 +72,8 @@ export default function ProductScroll({
   const cardClickTimer = useRef(null);
   const suppressCardClick = useRef(false);
   const viewportRef = useRef(null);
+  const pendingDrag = useRef(null);
+  const dragFrame = useRef(0);
   const shownAt = useRef(0);
   const productCount = products.length;
   const index = clamp(cursor, 0, Math.max(productCount - 1, 0));
@@ -62,6 +81,7 @@ export default function ProductScroll({
   const productId = product?.id;
   const isLiked = product ? liked.includes(product.id) : false;
   useEffect(() => () => {
+    window.cancelAnimationFrame(dragFrame.current);
     window.clearTimeout(wheelXTimer.current);
     window.clearTimeout(wheelUnlockTimer.current);
     window.clearTimeout(heartTimer.current);
@@ -111,6 +131,11 @@ export default function ProductScroll({
 
   const swipeHeart = (direction) => {
     if (!product || exitSwipe) return;
+    if (index === productCount - 1) {
+      heart();
+      showBoundary("You’re at the end of this scroll");
+      return;
+    }
     onHeart(product);
     setHeartPulse(true);
     setExitSwipe({ id: product.id, direction });
@@ -118,13 +143,9 @@ export default function ProductScroll({
     exitTimer.current = window.setTimeout(() => {
       setDrag({ axis: "", x: 0, y: 0 });
       setHeartPulse(false);
-      if (index < productCount - 1) {
-        setCursor(index + 1);
-        window.clearTimeout(exitTimer.current);
-        exitTimer.current = window.setTimeout(() => setExitSwipe(null), 620);
-      } else {
-        showBoundary("You’re at the end of this scroll");
-      }
+      setCursor(index + 1);
+      window.clearTimeout(exitTimer.current);
+      exitTimer.current = window.setTimeout(() => setExitSwipe(null), PAGE_TRANSITION_DURATION);
     }, SWIPE_EXIT_DURATION);
   };
 
@@ -185,7 +206,15 @@ export default function ProductScroll({
       if (Math.abs(x) > Math.abs(y) * 1.2) start.axis = "x";
       else if (Math.abs(y) > Math.abs(x) * 1.2) start.axis = "y";
     }
-    if (start.axis) setDrag({ axis: start.axis, x, y });
+    if (start.axis) {
+      pendingDrag.current = { axis: start.axis, x, y };
+      if (!dragFrame.current) {
+        dragFrame.current = window.requestAnimationFrame(() => {
+          setDrag(pendingDrag.current || { axis: "", x: 0, y: 0 });
+          dragFrame.current = 0;
+        });
+      }
+    }
   };
 
   const finishPointer = (event) => {
@@ -195,6 +224,9 @@ export default function ProductScroll({
     const x = event.clientX - start.x;
     const y = event.clientY - start.y;
     const axis = start.axis || (Math.abs(x) > Math.abs(y) ? "x" : "y");
+    window.cancelAnimationFrame(dragFrame.current);
+    dragFrame.current = 0;
+    pendingDrag.current = null;
     if (Math.max(Math.abs(x), Math.abs(y)) > AXIS_LOCK) {
       suppressCardClick.current = true;
       window.clearTimeout(cardClickTimer.current);
@@ -206,8 +238,10 @@ export default function ProductScroll({
     }
     setDrag({ axis: "", x: 0, y: 0 });
 
-    const threshold = Math.max(64, (event.currentTarget.clientHeight || 600) * 0.1);
-    if (axis === "y" && Math.abs(y) > threshold) {
+    const duration = performance.now() - start.time;
+    const threshold = Math.max(48, (event.currentTarget.clientHeight || 600) * 0.08);
+    const quickFlick = Math.abs(y) >= 28 && duration <= 280;
+    if (axis === "y" && (Math.abs(y) > threshold || quickFlick)) {
       if (y < 0) next();
       else previous();
     }
@@ -215,6 +249,9 @@ export default function ProductScroll({
 
   const cancelPointer = () => {
     gesture.current = null;
+    window.cancelAnimationFrame(dragFrame.current);
+    dragFrame.current = 0;
+    pendingDrag.current = null;
     setDrag({ axis: "", x: 0, y: 0 });
   };
 
@@ -234,20 +271,19 @@ export default function ProductScroll({
       return;
     }
 
+    if (Math.abs(deltaY) < 6) return;
+    const now = performance.now();
     if (wheelLock.current) {
-      if (performance.now() - wheelLockAt.current > 550) {
-        window.clearTimeout(wheelUnlockTimer.current);
-        wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, 160);
-      }
+      wheelLastAt.current = now;
+      scheduleWheelUnlock(wheelUnlockTimer, wheelLockUntil, wheelLastAt, wheelLock);
       return;
     }
-    if (Math.abs(deltaY) < 6) return;
     wheelLock.current = true;
-    wheelLockAt.current = performance.now();
+    wheelLockUntil.current = now + PAGE_TRANSITION_DURATION;
+    wheelLastAt.current = now;
     if (deltaY > 0) next();
     else previous();
-    window.clearTimeout(wheelUnlockTimer.current);
-    wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, WHEEL_COOLDOWN);
+    scheduleWheelUnlock(wheelUnlockTimer, wheelLockUntil, wheelLastAt, wheelLock);
   };
 
   const handleKeyDown = (event) => {
@@ -293,9 +329,10 @@ export default function ProductScroll({
     </section>;
   }
 
+  const firstVisibleIndex = Math.max(0, index - 1);
   const visibleProducts = products
-    .map((item, itemIndex) => ({ item, itemIndex }))
-    .filter(({ itemIndex }) => Math.abs(itemIndex - index) <= 1);
+    .slice(firstVisibleIndex, Math.min(productCount, index + 2))
+    .map((item, offset) => ({ item, itemIndex: firstVisibleIndex + offset }));
   const edgeDrag = (index === 0 && drag.y > 0) || (index === productCount - 1 && drag.y < 0);
   const trackOffset = drag.axis === "y" ? drag.y * (edgeDrag ? EDGE_RESISTANCE : 1) : 0;
 
