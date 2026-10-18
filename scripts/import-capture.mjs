@@ -171,10 +171,6 @@ function captureToProduct(capture, lineNumber) {
   };
 }
 
-function isNewerCapture(candidate, current) {
-  return new Date(candidate.last_seen_at).getTime() >= new Date(current.last_seen_at).getTime();
-}
-
 async function readCaptureFile(filePath) {
   await access(filePath);
 
@@ -201,7 +197,6 @@ async function readCaptureFile(filePath) {
     const existing = capturesByAsin.get(product.asin);
     if (existing) {
       duplicateCount += 1;
-      if (isNewerCapture(product, existing)) capturesByAsin.set(product.asin, product);
     } else {
       capturesByAsin.set(product.asin, product);
     }
@@ -237,7 +232,7 @@ async function importProducts(products) {
     const batch = products.slice(index, index + BATCH_SIZE);
     const { error } = await supabase
       .from(TABLE_NAME)
-      .upsert(batch, { onConflict: "asin" });
+      .upsert(batch, { ignoreDuplicates: true, onConflict: "asin" });
 
     if (error) {
       fail(`Supabase rejected records ${index + 1}-${index + batch.length}: ${error.message}`);
@@ -257,7 +252,7 @@ async function main() {
   }
 
   if (duplicates > 0) {
-    console.log(`Kept the newest record for ${duplicates} duplicate ASIN${duplicates === 1 ? "" : "s"}.`);
+    console.log(`Skipped ${duplicates} duplicate ASIN${duplicates === 1 ? "" : "s"} from the capture file.`);
   }
 }
 

@@ -5,17 +5,22 @@
   "scripts": {
     "dev": "NODE_ENV=development node app.js",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node app.js",
     "lint": "eslint",
+    "test": "node --test tests/*.test.mjs",
     "supabase:push": "npx supabase db push",
     "import:capture": "node scripts/import-capture.mjs",
     "import:sample-capture": "npm run supabase:push && npm run import:capture",
+    "import:hashtags": "node scripts/import-hashtags.mjs",
+    "backup:hashtags": "node scripts/backup-hashtags.mjs",
     "generate:hashtags": "node scripts/generate-hashtags.mjs",
+    "backfill:embeddings": "node scripts/backfill-embeddings.mjs",
     "enrich:sample-capture": "npm run import:sample-capture && npm run generate:hashtags"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@huggingface/transformers": "^4.3.1",
     "@mui/material": "^9.5.0",
     "@supabase/supabase-js": "^2.118.0",
     "axios": "^1.20.0",
@@ -34,6 +39,7 @@
     "@tailwindcss/turbopack": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "typescript": "^5.9.3"
   }
 }

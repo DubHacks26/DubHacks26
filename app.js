@@ -111,6 +111,7 @@ async function requireAuth(req, res, next) {
         detectSessionInUrl: false,
       },
     });
+    req.catalogSupabase = accountDirectory;
 
     return next();
   } catch (error) {
@@ -123,8 +124,9 @@ async function requireAuth(req, res, next) {
 }
 
 // This separate server-only client never receives a user's session.
-const accountDirectory = process.env.SUPABASE_SECRET_KEY
-  ? createClient(supabaseUrl, process.env.SUPABASE_SECRET_KEY, {
+const serverSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const accountDirectory = serverSecretKey
+  ? createClient(supabaseUrl, serverSecretKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
   : null;

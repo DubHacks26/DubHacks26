@@ -46,8 +46,9 @@ npm run import:sample-capture
 ```
 
 That command applies the Supabase migrations and imports `sample capture.jsonl`.
-The importer keys products by ASIN, so re-running it updates existing products
-instead of creating duplicates. Validate a file without writing any data with:
+The importer keys products by ASIN and leaves an existing product unchanged;
+repeated ASINs in the same file are also skipped. Validate a file without
+writing any data with:
 
 ```bash
 npm run import:capture -- --dry-run
@@ -85,6 +86,62 @@ npm run import:capture -- captures/latest.jsonl
 npm run generate:hashtags -- captures/latest.jsonl
 ```
 
+To apply hashtags that are already present in a capture JSONL, back up the
+current database rows first, then update only the `hashtags` column:
+
+```bash
+npm run backup:hashtags -- backups/before-hashtag-import.jsonl
+npm run import:hashtags -- captures/latest.jsonl --dry-run
+npm run import:hashtags -- captures/latest.jsonl
+```
+
+The backup includes complete catalog rows whose `hashtags` array is non-empty.
+The hashtag importer validates 5–20 lowercase ASCII tags per record, checks
+that every ASIN already exists, and never overwrites other product columns.
+
 The generator is resumable: it skips rows whose `hashtags` array is already
 populated. Test model output without writes with `--dry-run`, regenerate all
 rows with `--force`, or process a small sample with `--limit 10`.
+
+## Backend product recommendations
+
+Apply `supabase/migrations/20261017233000_catalog_recommendations.sql` with
+`npm run supabase:push` before using the recommendation API. This migration
+adds pgvector embeddings to the existing `catalog_products` table and creates
+five-slot user interests and idempotent positive interactions. The live
+catalog has hashtags in `catalog_products`; the older `products` table is not
+used for semantic recommendations.
+
+`npm run generate:hashtags` now embeds each updated hashtag list on the backend
+with `Xenova/all-MiniLM-L6-v2`. A database trigger clears an embedding if its
+hashtags change, so stale vectors cannot be recommended. To fill missing
+vectors after the migration or after direct database edits, run:
+
+```bash
+npm run backfill:embeddings
+# Or try a small batch first:
+npm run backfill:embeddings -- --limit 10
+```
+
+The model downloads on first use and is reused within the process. The scripts
+and Express server use `SUPABASE_SECRET_KEY` (or
+`SUPABASE_SERVICE_ROLE_KEY`) only on the backend. Keep
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the
+server key configured for `npm run dev` or `npm start`.
+
+Authenticated Express routes (Bearer Supabase access token):
+
+- `GET /user/recommendations?limit=20&exclude=ASIN1,ASIN2` returns an
+  interleaved, deduplicated catalog batch. New users get the newest products.
+- `POST /user/interactions` with `{"asin":"B012345678","action":"like"}`
+  (or `"save"`) updates one interest atomically. Repeated positive events for
+  the same product are ignored, and products without embeddings are skipped.
+
+The UI remains unchanged; it can call these routes when the catalog feed is
+connected. Interest similarity and learning rate live in
+`lib/recommendation-config.cjs`.
+
+Run `npm test` for vector, real-model, and route tests. After applying the
+migration, `RUN_DB_INTEGRATION_TESTS=1 npm test` also exercises concurrent
+updates, duplicate events, missing embeddings, fallback, and deduplicated
+recommendations against Supabase using temporary test users and products.

@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline";
 import nextEnv from "@next/env";
 import { createClient } from "@supabase/supabase-js";
+import { embedCatalogProduct } from "../lib/product-embeddings.mjs";
 
 const { loadEnvConfig } = nextEnv;
 
@@ -393,7 +394,17 @@ async function main() {
     if (options.dryRun) {
       console.log(`[dry run] ${product.asin}: ${hashtags.join(" ")}`);
     } else {
+      if (JSON.stringify(existingProducts.get(product.asin)?.hashtags) === JSON.stringify(hashtags)) {
+        console.log(`[${completed}/${pendingProducts.length}] ${product.asin}: hashtags unchanged`);
+        continue;
+      }
       await updateHashtags(supabase, product.asin, hashtags);
+      try {
+        await embedCatalogProduct(supabase, { asin: product.asin, hashtags });
+      } catch (error) {
+        // The migration leaves this product pending for the resumable backfill.
+        console.error(`Embedding ${product.asin} failed: ${error.message}`);
+      }
       console.log(`[${completed}/${pendingProducts.length}] ${product.asin}: ${hashtags.join(" ")}`);
     }
   }
