@@ -1,152 +1,237 @@
-.notice {
+.notice,
+.noticeError {
   margin: 1rem 0 0;
+  font-size: 0.82rem;
+}
+
+.notice {
   color: var(--plum);
-  font-size: 0.8rem;
 }
-.grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 1rem;
-  margin-top: 2.5rem;
+
+.noticeError {
+  color: #a82932;
 }
-.grid h2 {
-  margin: 0 0 1rem;
+
+.searchPanel {
+  margin-top: 2rem;
+}
+
+.searchPanel h2,
+.listPanel h2,
+.sharesPanel h2 {
+  margin: 0 0 0.4rem;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 400;
 }
-.activity {
-  grid-row: span 2;
+
+.searchPanel > p,
+.emptyInline,
+.loading {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.55;
 }
-.activity > div {
+
+.searchPanel > p {
+  margin: 0 0 1rem;
+}
+
+.searchForm {
   display: flex;
+  gap: 0.7rem;
+}
+
+.searchBox {
+  display: flex;
+  min-width: 0;
+  flex: 1;
   align-items: center;
-  gap: 0.8rem;
-  padding: 1rem 0;
+  gap: 0.6rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #fff;
+  color: var(--plum);
+}
+
+.searchBox input {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+}
+
+.searchBox input:focus-visible {
+  outline: 0;
+}
+
+.peopleList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.peopleList li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
   border-top: 1px solid var(--line);
 }
-.activity > div > span {
+
+.avatar {
   display: grid;
-  width: 2.7rem;
-  height: 2.7rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
   place-items: center;
   border-radius: 50%;
   background: var(--lavender);
-  font-size: 0.7rem;
+  color: var(--plum-dark);
+  font-size: 0.72rem;
   font-weight: 800;
 }
-.activity p {
-  display: flex;
+
+.peopleList li > strong {
   flex: 1;
-  flex-direction: column;
-  font-size: 0.8rem;
+  overflow: hidden;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
 }
-.activity small {
-  margin-top: 0.2rem;
+
+.status {
   color: var(--muted);
-}
-.activity svg {
-  color: var(--coral);
-}
-.compatibility {
-  text-align: center;
-}
-.score {
-  display: grid;
-  width: 6rem;
-  height: 6rem;
-  margin: auto;
-  place-items: center;
-  border: 7px solid var(--lavender);
-  border-top-color: var(--plum);
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-}
-.compatibility h2 {
-  margin: 0.8rem 0 0.2rem;
-}
-.compatibility p {
-  color: var(--plum);
   font-size: 0.75rem;
 }
-.compatibility > div {
+
+.rowActions {
   display: flex;
-  justify-content: center;
-  gap: 0.3rem;
+  gap: 0.45rem;
 }
-.compatibility > div span {
-  padding: 0.3rem 0.5rem;
-  border-radius: 999px;
-  background: var(--paper);
-  font-size: 0.6rem;
+
+.rowActions button,
+.peopleList li > button {
+  padding: 0.55rem 0.8rem;
+  font-size: 0.74rem;
 }
-.compatibility > small {
-  display: block;
-  margin-top: 0.8rem;
-  color: var(--muted);
+
+.emptyInline,
+.loading {
+  margin: 0.85rem 0 0;
 }
-.vote {
-  grid-column: span 2;
-}
-.vote h2 {
-  font-size: 1.5rem;
-}
-.options {
+
+.sections {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
-.options button {
+
+.listPanel h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+.sharesPanel {
+  grid-column: 1 / -1;
+}
+
+.shares {
   display: grid;
-  grid-template-columns: 60px 1fr auto;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.shareCard {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.5rem;
-  border: 1px solid transparent;
+  gap: 0.75rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
   border-radius: 0.8rem;
-  background: var(--paper);
-  cursor: pointer;
-  text-align: left;
 }
-.options button:hover,
-.options button[aria-pressed="true"] {
-  border-color: var(--plum);
-}
-.options img {
-  width: 60px;
-  height: 60px;
-  border-radius: 0.5rem;
+
+.shareCard > img {
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 0.6rem;
   object-fit: cover;
 }
-.options i {
-  grid-column: 2 / 4;
-  height: 6px;
-  border-radius: 5px;
-  background: var(--lavender);
+
+.shareCard > div {
+  min-width: 0;
 }
-.options b {
-  display: block;
-  height: 100%;
-  border-radius: 5px;
-  background: var(--plum);
+
+.shareCard small {
+  color: var(--plum);
+  font-size: 0.68rem;
 }
-.vote > small {
-  display: block;
-  margin-top: 0.7rem;
+
+.shareCard h3 {
+  overflow: hidden;
+  margin: 0.2rem 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+.shareCard p {
+  margin: 0 0 0.25rem;
   color: var(--muted);
+  font-size: 0.7rem;
 }
+
+.shareCard strong {
+  font-size: 0.75rem;
+}
+
+.shareCard a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--plum);
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.shareCard a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 760px) {
-  .grid {
+  .searchForm {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .searchForm > button {
+    min-height: 44px;
+  }
+
+  .sections {
     grid-template-columns: 1fr;
   }
-  .activity {
-    grid-row: auto;
-  }
-  .vote {
+
+  .sharesPanel {
     grid-column: auto;
   }
-  .options {
-    grid-template-columns: 1fr;
+
+  .peopleList li {
+    flex-wrap: wrap;
+  }
+
+  .rowActions {
+    width: 100%;
+    padding-left: 3.25rem;
   }
 }

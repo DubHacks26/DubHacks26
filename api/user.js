@@ -13,6 +13,139 @@ function catalogClient(req, res) {
   return null;
 }
 
+function isUuid(value) {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function handleFriendSearch(req, res) {
+  const prefix = typeof req.query.query === 'string' ? req.query.query.trim().toLowerCase() : '';
+  if (prefix.length < 2 || prefix.length > 24 || !/^[a-z0-9_]+$/.test(prefix)) {
+    return res.status(400).json({ error: 'Enter at least two letters, numbers, or underscores to search usernames.' });
+  }
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const { data, error } = await client.rpc('search_account_usernames', {
+    p_prefix: prefix,
+    p_user_id: req.user.id,
+    p_limit: 20,
+  });
+  if (error) {
+    console.error('Friend account search failed:', error);
+    return res.status(503).json({ error: 'Account search is temporarily unavailable. Apply the friends migration if it has not been run.' });
+  }
+  return res.json({
+    users: (data || []).map(user => ({
+      userId: user.user_id,
+      username: user.username,
+      relationship: user.relationship,
+    })),
+  });
+}
+
+async function handleFriendData(req, res) {
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const { data, error } = await client.rpc('get_friend_data', {
+    p_user_id: req.user.id,
+  });
+  if (error) {
+    console.error('Friend data lookup failed:', error);
+    return res.status(503).json({ error: 'Friends are temporarily unavailable. Apply the friends migration if it has not been run.' });
+  }
+  return res.json(data || {
+    friends: [],
+    incomingRequests: [],
+    outgoingRequests: [],
+    shares: [],
+  });
+}
+
+async function handleFriendRequest(req, res) {
+  const friendId = req.body?.friendId;
+  if (!isUuid(friendId) || friendId === req.user.id) {
+    return res.status(400).json({ error: 'Choose a valid user to add.' });
+  }
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const { data, error } = await client.rpc('create_friend_request', {
+    p_sender_id: req.user.id,
+    p_recipient_id: friendId,
+  });
+  if (error) {
+    console.error('Friend request creation failed:', error);
+    return res.status(503).json({ error: 'The friend request could not be sent.' });
+  }
+  if (data === 'not_found') return res.status(404).json({ error: 'That account could not be found.' });
+  return res.json({ status: data });
+}
+
+async function handleFriendResponse(req, res) {
+  const { friendId, accept } = req.body || {};
+  if (!isUuid(friendId) || friendId === req.user.id || typeof accept !== 'boolean') {
+    return res.status(400).json({ error: 'Provide a valid friend request and response.' });
+  }
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const { data, error } = await client.rpc('respond_friend_request', {
+    p_user_id: req.user.id,
+    p_friend_id: friendId,
+    p_accept: accept,
+  });
+  if (error) {
+    console.error('Friend request response failed:', error);
+    return res.status(503).json({ error: 'The friend request could not be updated.' });
+  }
+  if (data !== true) return res.status(404).json({ error: 'That pending friend request could not be found.' });
+  return res.json({ accepted: accept });
+}
+
+async function handleFriendRemoval(req, res) {
+  const friendId = req.params.friendId;
+  if (!isUuid(friendId) || friendId === req.user.id) {
+    return res.status(400).json({ error: 'Choose a valid friend to remove.' });
+  }
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const { data, error } = await client.rpc('remove_friendship', {
+    p_user_id: req.user.id,
+    p_friend_id: friendId,
+  });
+  if (error) {
+    console.error('Friend removal failed:', error);
+    return res.status(503).json({ error: 'The friend could not be removed.' });
+  }
+  if (data !== true) return res.status(404).json({ error: 'That friend was not found.' });
+  return res.json({ removed: true });
+}
+
+async function handleProductShare(req, res) {
+  const { friendId, asin } = req.body || {};
+  if (!isUuid(friendId) || friendId === req.user.id
+      || typeof asin !== 'string' || !/^[A-Z0-9]{10}$/.test(asin)) {
+    return res.status(400).json({ error: 'Choose an accepted friend and a valid catalog product.' });
+  }
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const { data, error } = await client.rpc('share_product_with_friend', {
+    p_sender_id: req.user.id,
+    p_recipient_id: friendId,
+    p_asin: asin,
+  });
+  if (error) {
+    console.error('Product share failed:', error);
+    const message = error.message || '';
+    if (message.includes('accepted friend')) {
+      return res.status(403).json({ error: 'You can share products only with accepted friends.' });
+    }
+    if (message.includes('Product not found')) {
+      return res.status(404).json({ error: 'That product could not be found in the catalog.' });
+    }
+    return res.status(503).json({ error: 'The product could not be shared.' });
+  }
+  return res.status(201).json({ shareId: data });
+}
+
 async function handleRecommendations(req, res) {
   const client = catalogClient(req, res);
   if (!client) return;
@@ -223,6 +356,12 @@ async function handleSemanticSearch(req, res, embedQuery) {
 Router.get('/catalog', handleCatalog);
 Router.get('/history-products', handleHistoryProducts);
 Router.get('/recommendations', handleRecommendations);
+Router.get('/friends/search', handleFriendSearch);
+Router.get('/friends', handleFriendData);
+Router.post('/friends/requests', handleFriendRequest);
+Router.patch('/friends/requests', handleFriendResponse);
+Router.delete('/friends/:friendId', handleFriendRemoval);
+Router.post('/friends/shares', handleProductShare);
 Router.get('/search', (req, res) => handleSemanticSearch(req, res));
 Router.post('/search', (req, res) => handleSemanticSearch(req, res));
 Router.post('/interactions', handleInteraction);
@@ -238,4 +377,10 @@ module.exports = {
   handleRecommendations,
   handleInteraction,
   handleSemanticSearch,
+  handleFriendSearch,
+  handleFriendData,
+  handleFriendRequest,
+  handleFriendResponse,
+  handleFriendRemoval,
+  handleProductShare,
 };

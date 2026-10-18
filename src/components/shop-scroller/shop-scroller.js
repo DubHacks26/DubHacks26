@@ -27,6 +27,7 @@ const ProductDrawer = dynamic(() => import("@/components/product-drawer/product-
 const CollectionPicker = dynamic(() => import("@/components/collection-picker/collection-picker"));
 const SearchOverlay = dynamic(() => import("@/components/search-overlay/search-overlay"));
 const SearchResults = dynamic(() => import("@/components/search-results/search-results"));
+const FriendShareDialog = dynamic(() => import("@/components/friend-share-dialog/friend-share-dialog"));
 // `3d-force-graph` reads `window` as soon as it loads. Keep the map out of
 // Next's server render so the browser is always responsible for initializing
 // its WebGL canvas.
@@ -169,6 +170,7 @@ export default function AppShell({
   const [lastSwipe, setLastSwipe] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [collectionPickerProduct, setCollectionPickerProduct] = useState(null);
+  const [sharingProduct, setSharingProduct] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [cart, setCart] = useState([]);
@@ -455,18 +457,7 @@ export default function AppShell({
       .catch(error => showToast(`Could not undo this action: ${error.message}`));
   };
 
-  const shareProduct = async (product) => {
-    const text = `${product.name} by ${product.brand} · $${product.price}`;
-    try {
-      if (navigator.share) await navigator.share({ title: product.name, text });
-      else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        showToast("Product details copied");
-      } else showToast("Sharing is unavailable in this browser");
-    } catch {
-      /* Closing the native share sheet needs no message. */
-    }
-  };
+  const shareProduct = (product) => setSharingProduct(product);
 
   let content;
   if (page === "Home")
@@ -649,6 +640,13 @@ export default function AppShell({
         <SearchOverlay
           onClose={() => setSearchOpen(false)}
           onSearch={searchForQuery}
+        />
+      )}
+      {sharingProduct && (
+        <FriendShareDialog
+          onClose={() => setSharingProduct(null)}
+          onShared={friend => showToast(`Shared with @${friend.username}.`)}
+          product={sharingProduct}
         />
       )}
       {toast && (

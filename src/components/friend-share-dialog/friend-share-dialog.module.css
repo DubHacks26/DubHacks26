@@ -1,0 +1,131 @@
+.overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(35 26 36 / 55%);
+}
+
+.dialog {
+  width: min(100%, 30rem);
+  max-height: min(85vh, 42rem);
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header h2 {
+  margin: 0;
+  font: 1.7rem var(--font-display), Georgia, serif;
+}
+
+.header button {
+  flex: none;
+}
+
+.product {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: #fff;
+}
+
+.product img {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: none;
+  border-radius: 0.55rem;
+  object-fit: cover;
+}
+
+.product strong {
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+.friends {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friends li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.friends li strong {
+  flex: 1;
+  font-size: 0.84rem;
+}
+
+.friends li button {
+  padding: 0.55rem 0.85rem;
+}
+
+.avatar {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--lavender);
+  color: var(--plum-dark);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.status,
+.empty p {
+  color: var(--muted);
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.75rem;
+}
+
+.empty p {
+  margin: 0;
+}
+
+.error {
+  color: #a82932;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 480px) {
+  .dialog {
+    padding: 1rem;
+  }
+}

@@ -175,12 +175,21 @@ Authenticated Express routes (Bearer Supabase access token):
 - `GET /user/search?query=...` returns title-semantic matches without changing
   preferences; `POST /user/search` performs the same search and weakly learns
   from its closest confident result.
+- `GET /user/friends/search?query=...` searches public usernames without
+  exposing email addresses. Friend requests must be accepted before product
+  sharing is allowed; friend and shared-product records are server-managed.
 
 Search results can be opened as a dedicated search scroll at
 `/search/scroll?query=...`. That feed contains only the semantic matches for
 the query; likes, skips, and dwell time update the same preference model as
 the regular feed. As feedback arrives, only unseen matches are re-ranked, and
 the in-feed button returns to the regular personalized Scroll.
+
+Friends and product sharing use the
+`20261018082000_friends_and_product_shares.sql` migration. Run
+`npm run supabase:push` after deploying the code so authenticated users can
+search usernames, manage requests, and share catalog products with accepted
+friends.
 
 The Discover and Scroll experiences call these routes. The feed ranks products
 using four personal signals—main category (10%), subcategory (20%), hashtags

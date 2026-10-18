@@ -57,6 +57,38 @@ async function searchCatalogProducts(query, { learn = false } = {}) {
   return response.data;
 }
 
+async function searchFriendAccounts(query) {
+  const response = await AxiosInstance.get("/user/friends/search", {
+    params: { query },
+  });
+  return response.data?.users || [];
+}
+
+async function getFriendData() {
+  const response = await AxiosInstance.get("/user/friends");
+  return response.data;
+}
+
+async function sendFriendRequest(friendId) {
+  const response = await AxiosInstance.post("/user/friends/requests", { friendId });
+  return response.data;
+}
+
+async function respondToFriendRequest(friendId, accept) {
+  const response = await AxiosInstance.patch("/user/friends/requests", { friendId, accept });
+  return response.data;
+}
+
+async function removeFriend(friendId) {
+  const response = await AxiosInstance.delete(`/user/friends/${encodeURIComponent(friendId)}`);
+  return response.data;
+}
+
+async function shareProductWithFriend(friendId, asin) {
+  const response = await AxiosInstance.post("/user/friends/shares", { friendId, asin });
+  return response.data;
+}
+
 async function recordSemanticInteraction(asin, action, { dwellMs } = {}) {
   const payload = { asin, action };
   if (Number.isInteger(dwellMs)) payload.dwellMs = dwellMs;
@@ -131,6 +163,12 @@ export {
   getRecommendations,
   getProductsByAsins,
   searchCatalogProducts,
+  searchFriendAccounts,
+  getFriendData,
+  sendFriendRequest,
+  respondToFriendRequest,
+  removeFriend,
+  shareProductWithFriend,
   getCurrentSession,
   getUserInfo,
   onAuthStateChange,
