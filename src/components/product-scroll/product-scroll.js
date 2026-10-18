@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { productChips } from "@/utils/feed.mjs";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
+import { appendToScrollQueue } from "@/utils/scroll-queue.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
@@ -40,7 +41,7 @@ function scheduleWheelUnlock(timer, lockUntil, lastAt, lock) {
 }
 
 export default function ProductScroll({
-  products,
+  products: incomingProducts = [],
   liked,
   saved,
   onDetails,
@@ -52,6 +53,7 @@ export default function ProductScroll({
   error = "",
   onRetry,
 }) {
+  const [queue, setQueue] = useState(() => incomingProducts);
   const [cursor, setCursor] = useState(0);
   const [drag, setDrag] = useState({ axis: "", x: 0, y: 0 });
   const [heartPulse, setHeartPulse] = useState(false);
@@ -75,6 +77,22 @@ export default function ProductScroll({
   const pendingDrag = useRef(null);
   const dragFrame = useRef(0);
   const shownAt = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+    // The recommendation request may resolve while a card is visible. Append
+    // its new candidates instead of replacing or reordering that card's queue.
+    Promise.resolve().then(() => {
+      if (active) setQueue(queue => appendToScrollQueue(queue, incomingProducts));
+    });
+    return () => {
+      active = false;
+    };
+  }, [incomingProducts]);
+
+  // Render the first server-loaded batch immediately; later batches enter via
+  // the stable queue above.
+  const products = queue.length ? queue : incomingProducts;
   const productCount = products.length;
   const index = clamp(cursor, 0, Math.max(productCount - 1, 0));
   const product = products[index];

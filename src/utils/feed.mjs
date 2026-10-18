@@ -30,6 +30,7 @@ export const likedCollectionId = "liked";
 const titleEmbeddingDimensions = 384;
 const titleSimilarityFloor = 0.2;
 const titleSimilarityCeiling = 0.7;
+const seenProductScoreMultiplier = 0.2;
 
 const legacyCategories = ["Home", "Electronics", "Gaming", "Fashion", "Beauty", "Education"];
 
@@ -295,7 +296,10 @@ export function restoreProfile(raw) {
     raw.likes?.length || raw.saved?.length || raw.skips?.length || raw.feedback?.length
   ))) {
     const orderedEvents = raw.events.map(normalizeEvent).filter(Boolean);
-    const seen = Array.isArray(raw.seen) ? raw.seen : [];
+    // Remote profiles persist interactions, not a separate feed cursor. Build
+    // the durable seen set from those actions so refreshes keep fresh products
+    // ahead of cards the account has already viewed.
+    const seen = Array.isArray(raw.seen) ? raw.seen : seenFromEvents(orderedEvents);
     return rebuildProfile(profile, orderedEvents, seen);
   }
 
@@ -568,13 +572,17 @@ export function getFeed(catalog, profile, now = Date.now(), sourceCatalog = cata
     [...catalog, ...sourceCatalog].map((product) => [product.id, product]),
   ).values()], now);
   return catalog
-    .filter((product) => !profile.seen.includes(product.id))
     .map((product) => {
       const score = scoreWithContext(product, profile, context);
       const exploration = explorationScore(product, profile, now);
+      const rankedScore = score * (1 - explorationWeight) + exploration * explorationWeight;
       return {
         product,
-        score: score * (1 - explorationWeight) + exploration * explorationWeight,
+        // A viewed card remains eligible when the catalog is small, but fresh
+        // cards should win unless the viewed product is a much better match.
+        score: profile.seen.includes(product.id)
+          ? rankedScore * seenProductScoreMultiplier
+          : rankedScore,
       };
     })
     .sort((a, b) => b.score - a.score || String(a.product.id).localeCompare(String(b.product.id)))

@@ -65,9 +65,8 @@ npm run supabase:push
 ```
 
 The feed migration adds the category fields and creates the per-user preference
-and interaction tables with row-level security. Product actions are retained
-across sign-ins and used to rank the feed; the current seen-card position is
-session-only.
+and interaction tables with row-level security. Product actions and their
+derived seen state are retained across sign-ins and used to rank the feed.
 
 ## Generating local-LLM hashtags
 
@@ -203,8 +202,9 @@ no hashtag embedding. The penalty settings, quick-skip threshold, and learning
 rates live in the server-only `recommendation_negative_settings` table. The
 normal feed's direct feedback rules remain in place and continue to decay with
 a 30-day half-life.
-Already-seen products are excluded only for the current session; their feedback
-continues to personalize later sessions.
+Already-seen products remain eligible, but their client-side feed score is
+reduced by 80%. This keeps fresh products ahead while allowing a particularly
+strong match to return when the catalog is small.
 
 Run `npm run supabase:push` to apply any pending local migration, including
 `20261018050000_negative_semantic_feedback.sql`, which adds avoidance vectors,

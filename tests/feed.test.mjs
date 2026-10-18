@@ -72,7 +72,7 @@ test("likes rank related subcategories, hashtags, and titles more highly", () =>
     createdAt: "2026-10-01T00:00:00.000Z",
   });
   const ranked = getFeed(catalog, liked, Date.parse("2026-10-02T00:00:00.000Z"));
-  assert.deepEqual(ranked.map((product) => product.id), ["A000000002", "A000000003"]);
+  assert.deepEqual(ranked.map((product) => product.id), ["A000000002", "A000000003", "A000000001"]);
   assert.ok(personalScore(catalog[1], liked, catalog) > personalScore(catalog[2], liked, catalog));
 });
 
@@ -313,7 +313,8 @@ test("skip and show-less are negative, recency-weighted preference events", () =
   });
   assert.deepEqual(profile.seen, ["A000000001", "A000000002"]);
   assert.equal(profile.feedback.length, 1);
-  assert.equal(getFeed(catalog, profile).length, 1);
+  assert.equal(getFeed(catalog, profile).length, 3);
+  assert.equal(getFeed(catalog, profile)[0].id, "A000000003");
 });
 
 test("explicit dislike strongly lowers same-category products without filtering them out", () => {
@@ -400,7 +401,7 @@ test("saved preferences and events restore account state", () => {
   assert.equal(profile.onboarded, true);
   assert.deepEqual(profile.likes, ["A000000001"]);
   assert.deepEqual(profile.saved, ["A000000002"]);
-  assert.deepEqual(profile.seen, []);
+  assert.deepEqual(profile.seen, ["A000000001", "A000000003"]);
 });
 
 test("undo removes one interaction and recomputes the affected state", () => {
@@ -450,12 +451,15 @@ test("feed exploration is small, deterministic, and varies otherwise tied produc
 });
 
 
-test("filtering a shared ranking preserves the unseen feed order", () => {
+test("seen products are strongly demoted but remain eligible", () => {
   const now = Date.parse("2026-10-02T00:00:00.000Z");
-  const profile = recordAction(createProfile(), catalog[0].id, "like", {
-    id: "shared-ranking", createdAt: new Date(now).toISOString(),
+  const viewed = normalizeProduct({
+    asin: "A000000050", title: "Viewed product", price_cents: 2500, rating: 4.8,
   });
-  const seen = new Set(profile.seen);
-  const ranked = getFeed(catalog, { ...profile, seen: [] }, now);
-  assert.deepEqual(ranked.filter(product => !seen.has(product.id)), getFeed(catalog, profile, now));
+  const fresh = normalizeProduct({
+    ...viewed, asin: "A000000051", title: "Fresh product",
+  });
+  const profile = { ...createProfile(), seen: [viewed.id] };
+  const ranked = getFeed([viewed, fresh], profile, now);
+  assert.deepEqual(ranked.map(product => product.id), [fresh.id, viewed.id]);
 });

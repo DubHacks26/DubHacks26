@@ -135,20 +135,16 @@ export default function AppShell({
   }, [catalogProducts, recommendationProducts]);
   const products = useMemo(() => [...productById.values()], [productById]);
   const sourceProducts = useMemo(() => historyProducts.map(normalizeCatalogProduct), [historyProducts]);
-  // Rank once; hiding seen items does not change the score of other products.
-  const searchableProducts = useMemo(() => getFeed(
+  // Seen products stay eligible but rank far below fresh products.
+  const feed = useMemo(() => getFeed(
     products,
-    { ...profile, seen: [] },
+    profile,
     feedTimestamp,
     [...products, ...sourceProducts],
   ), [products, profile, feedTimestamp, sourceProducts]);
-  const feed = useMemo(() => {
-    const seen = new Set(profile.seen);
-    return searchableProducts.filter(product => !seen.has(product.id));
-  }, [searchableProducts, profile.seen]);
   const currentProduct = feed[0];
   const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
-  // Scroll consumes the same ranked, unseen feed as Discover. ProductScroll
+  // Scroll consumes the same ranked feed as Discover. ProductScroll
   // keeps its own cursor, so the current card remains stable during a gesture.
   const scrollProducts = feed;
   const [tuning, setTuning] = useState(false);
@@ -218,7 +214,7 @@ export default function AppShell({
     let cancelled = false;
     // Coalesce bursts of feedback. Catalog rendering never waits for this request.
     const timer = window.setTimeout(() => {
-      getRecommendations(100, profile.seen)
+      getRecommendations(100)
         .then(rows => {
           if (!cancelled) setRecommendationProducts(rows.map(normalizeCatalogProduct));
         })
@@ -268,7 +264,7 @@ export default function AppShell({
     }
     return onPersistAction(asin, action, context)
       .then(event => {
-        if (event.embeddingError || event.embeddingApplied === false) {
+        if (event.embeddingError) {
           showToast("Action saved. Vector learning is temporarily unavailable; other feedback still guides your feed.");
         } else if (successMessage) {
           showToast(successMessage);
