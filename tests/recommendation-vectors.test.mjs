@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  EMBEDDING_DIMENSIONS, MAX_INTERESTS, SIMILARITY_THRESHOLD, LEARNING_RATE,
+  EMBEDDING_DIMENSIONS, MAX_INTERESTS, SIMILARITY_THRESHOLD, LEARNING_RATE, NOVEL_INTEREST_LEARNING_RATE,
   validateVector, normalizeVector, dotProduct, cosineSimilarity,
   weightedUpdate, closestInterest, shouldCreateInterest, updateInterests,
 } from '../lib/vector.mjs';
@@ -80,7 +80,25 @@ test('dissimilar products fill five slots, then update the closest slot', () => 
   assert.equal(updated.length, MAX_INTERESTS);
   assert.deepEqual(updated.slice(1), interests.slice(1));
   near(Math.hypot(...updated[0].embedding), 1);
-  assert.ok(updated[0].embedding[5] > 0);
+  const expected = weightedUpdate(interests[0].embedding, product, NOVEL_INTEREST_LEARNING_RATE);
+  near(dotProduct(updated[0].embedding, expected), 1);
+  const saved = updateInterests(interests, product, SIMILARITY_THRESHOLD, 'save');
+  near(dotProduct(saved[0].embedding, weightedUpdate(interests[0].embedding, product)), 1);
+});
+
+test('full interest slots keep ordinary learning at or above the similarity threshold', () => {
+  const interests = Array.from({ length: MAX_INTERESTS }, (_, slotIndex) => ({ slotIndex, embedding: axis(slotIndex) }));
+  const product = normalizeVector(axis(0).map((value, index) => value + (index === 5 ? 0.2 : 0)));
+  const threshold = closestInterest(interests, product).similarity;
+  const updated = updateInterests(interests, product, threshold);
+  near(dotProduct(updated[0].embedding, weightedUpdate(axis(0), product)), 1);
+});
+
+test('opposite novel likes cannot create a zero interest vector', () => {
+  const interests = Array.from({ length: MAX_INTERESTS }, (_, slotIndex) => ({ slotIndex, embedding: axis(0) }));
+  const product = axis(0).map(value => -value);
+  const updated = updateInterests(interests, product);
+  near(dotProduct(updated[0].embedding, product), 1);
 });
 
 test('real model returns normalized 384D vectors with sensible semantic similarity', async () => {

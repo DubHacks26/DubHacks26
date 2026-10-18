@@ -71,6 +71,7 @@ test('hashtag SQL migration and synchronization work together', async t => {
     '20261017232000_add_catalog_product_hashtags.sql',
     '20261017233000_catalog_recommendations.sql',
     '20261018010000_hashtag_graph.sql',
+    '20261018070000_taste_map_popularity_and_pruning.sql',
   ]) await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
   const client = clientFor(db);
   const graph = async (name = null, limit = 100, linkLimit = 500) => {
@@ -90,7 +91,7 @@ test('hashtag SQL migration and synchronization work together', async t => {
       from pg_proc where proname in ('claim_hashtag_embedding', 'finish_hashtag_embedding', 'refresh_hashtag_graph', 'get_hashtag_graph')`)).rows;
     assert.equal(privileges.length, 4);
     assert.ok(privileges.every(p => !p.anon && !p.authenticated && p.service));
-    await assert.rejects(graph(null, 301));
+    await assert.rejects(graph(null, 501));
     await assert.rejects(graph(null, 10, 2001));
     await db.exec('set role anon');
     await assert.rejects(db.query('select * from public.hashtags'));

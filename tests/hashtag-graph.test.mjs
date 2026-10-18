@@ -45,7 +45,7 @@ test('graph API validates bounds, normalizes queries, and handles empty/isolated
   await graphApi.handleGraph(request, res);
   assert.deepEqual(res.body, graph);
   assert.deepEqual(calls[0], { name: 'get_hashtag_graph', args: {
-    p_name: null, p_limit: 100, p_link_limit: 500,
+    p_name: null, p_limit: 500, p_link_limit: 2000,
   } });
   graph = { nodes: [{ id: 'uuid', name: 'coffee_machine' }], links: [] };
   request.query = { hashtag: '#COFFEE_machine', limit: '1', linkLimit: '1' };
@@ -54,7 +54,7 @@ test('graph API validates bounds, normalizes queries, and handles empty/isolated
   assert.deepEqual(res.body, graph);
   assert.equal(calls.at(-1).args.p_name, 'coffee machine');
 
-  for (const query of [{ limit: '301' }, { limit: '0' }, { limit: '1.5' },
+  for (const query of [{ limit: '501' }, { limit: '0' }, { limit: '1.5' },
     { linkLimit: '2001' }, { limit: ['2'] }, { hashtag: {} }, { hashtag: '#_' },
     { hashtag: 'a'.repeat(513) }, { limit: 'Infinity' }]) {
     const before = calls.length;
@@ -64,7 +64,7 @@ test('graph API validates bounds, normalizes queries, and handles empty/isolated
     assert.equal(res.code, 400);
     assert.equal(calls.length, before);
   }
-  request.query = { limit: '300', linkLimit: '2000' };
+  request.query = { limit: '500', linkLimit: '2000' };
   res = response();
   await graphApi.handleGraph(request, res);
   assert.equal(res.code, 200);

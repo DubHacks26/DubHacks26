@@ -64,7 +64,7 @@ async function recordSemanticInteraction(asin, action, { dwellMs } = {}) {
   return response.data?.applied === true;
 }
 
-async function getHashtagGraph({ hashtag, limit = 90, linkLimit = 500 } = {}) {
+async function getHashtagGraph({ hashtag, limit = 500, linkLimit = 2000 } = {}) {
   const response = await AxiosInstance.get("/hashtags/graph", {
     params: {
       ...(hashtag ? { hashtag } : {}),

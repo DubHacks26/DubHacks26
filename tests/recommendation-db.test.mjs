@@ -78,7 +78,7 @@ test('database enforces idempotent, concurrent five-slot interests and interleav
     assert.equal(await interact(userId, novel), true);
     rows = await interests(userId);
     assert.equal(rows.length, 5);
-    assert.ok(dotProduct(parseVector(rows[0].embedding), weightedUpdate(before, novelVector)) > 0.999999);
+    assert.ok(dotProduct(parseVector(rows[0].embedding), weightedUpdate(before, novelVector, config.NOVEL_INTEREST_LEARNING_RATE)) > 0.999999);
 
     const recommendations = check(await db.rpc('recommend_catalog_products', {
       p_user_id: userId, p_limit: 20, p_exclude_asins: [first],

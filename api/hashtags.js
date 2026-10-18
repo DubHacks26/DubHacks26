@@ -16,7 +16,7 @@ async function handleGraph(req, res) {
   const rawName = req.query.hashtag;
   if (limit === null || linkLimit === null || (rawName !== undefined &&
       (typeof rawName !== 'string' || rawName.length > 512 || !normalizeHashtag(rawName)))) {
-    return res.status(400).json({ error: 'Provide a valid hashtag, limit (1–300), and linkLimit (1–2000).' });
+    return res.status(400).json({ error: 'Provide a valid hashtag, limit (1–500), and linkLimit (1–2000).' });
   }
   if (!req.catalogSupabase) return res.status(503).json({ error: 'The catalog service is not configured.' });
   try {
