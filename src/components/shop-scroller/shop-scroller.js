@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
@@ -26,6 +26,7 @@ const Profile = dynamic(() => import("@/components/profile/profile"));
 const ProductDrawer = dynamic(() => import("@/components/product-drawer/product-drawer"));
 const CollectionPicker = dynamic(() => import("@/components/collection-picker/collection-picker"));
 const SearchOverlay = dynamic(() => import("@/components/search-overlay/search-overlay"));
+const SearchResults = dynamic(() => import("@/components/search-results/search-results"));
 
 function errorMessage(error, fallback) {
   const responseError = error?.response?.data?.error;
@@ -118,11 +119,14 @@ export default function AppShell({
   const collectionId = pathname.startsWith("/collections/")
     ? decodeURIComponent(pathname.slice("/collections/".length).split("/")[0])
     : null;
-  const page = collectionId ? "Collections" : navItems.find(item => item.href === pathname)?.label || initialPage;
+  const page = pathname === "/search"
+    ? "Search"
+    : collectionId ? "Collections" : navItems.find(item => item.href === pathname)?.label || initialPage;
   const [catalogProducts, setCatalogProducts] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [catalogReload, setCatalogReload] = useState(0);
+  const [recommendationReload, setRecommendationReload] = useState(0);
   const [recommendationProducts, setRecommendationProducts] = useState([]);
   const [feedTimestamp] = useState(() => Date.now());
   const saved = profile.saved;
@@ -158,6 +162,9 @@ export default function AppShell({
   const [cartLoaded, setCartLoaded] = useState(false);
   const cartStorageKey = `shopscroller:cart:v1:${user.id}`;
   const cartIds = cart.map(item => item.id);
+  const handleSearchLearned = useCallback(() => {
+    setRecommendationReload(current => current + 1);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -190,6 +197,11 @@ export default function AppShell({
   const navigateTo = (label) => {
     const destination = navItems.find(item => item.label === (label === "Discover" ? "Home" : label))?.href;
     if (destination) router.push(destination);
+  };
+
+  const searchForQuery = (query) => {
+    setSearchOpen(false);
+    router.push(`/search?query=${encodeURIComponent(query)}`);
   };
 
   useEffect(() => {
@@ -226,7 +238,7 @@ export default function AppShell({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [user.id, catalogReload, profile.events.length, profile.seen, learningRevision]);
+  }, [user.id, catalogReload, recommendationReload, profile.events.length, profile.seen, learningRevision]);
 
   const showToast = (message) => {
     setToast(message);
@@ -522,6 +534,15 @@ export default function AppShell({
     );
   else if (page === "Budget")
     content = <Budget catalogProducts={products} onRemove={removeFromAllCollections} saved={saved} />;
+  else if (page === "Search")
+    content = (
+      <Suspense fallback={<p role="status">Loading search…</p>}>
+        <SearchResults
+          onLearned={handleSearchLearned}
+          onSelect={(product) => setDrawer({ product, type: "details" })}
+        />
+      </Suspense>
+    );
   else if (page === "Friends") content = <Friends />;
   else content = <Profile profile={profile} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} onTune={() => setTuning(true)} />;
 
@@ -589,11 +610,7 @@ export default function AppShell({
       {searchOpen && (
         <SearchOverlay
           onClose={() => setSearchOpen(false)}
-          products={searchableProducts}
-          onSelect={(product) => {
-            setDrawer({ product, type: "details" });
-            setSearchOpen(false);
-          }}
+          onSearch={searchForQuery}
         />
       )}
       {toast && (

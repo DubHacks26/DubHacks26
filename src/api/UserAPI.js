@@ -50,6 +50,13 @@ async function getProductsByAsins(asins = []) {
   return response.data?.products || [];
 }
 
+async function searchCatalogProducts(query, { learn = false } = {}) {
+  const response = learn
+    ? await AxiosInstance.post("/user/search", { query })
+    : await AxiosInstance.get("/user/search", { params: { query } });
+  return response.data;
+}
+
 async function recordSemanticInteraction(asin, action, { dwellMs } = {}) {
   const payload = { asin, action };
   if (Number.isInteger(dwellMs)) payload.dwellMs = dwellMs;
@@ -111,6 +118,7 @@ export {
   getCatalogProducts,
   getRecommendations,
   getProductsByAsins,
+  searchCatalogProducts,
   getCurrentSession,
   getUserInfo,
   onAuthStateChange,

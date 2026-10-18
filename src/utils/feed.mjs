@@ -91,7 +91,7 @@ const actionStrength = {
   like: 1,
   save: 0.5,
   unsave: -0.5,
-  skip: -0.25,
+  skip: 0,
   show_less: -1,
   unlike: -1,
   too_expensive: -0.75,
@@ -233,6 +233,9 @@ function normalizeEvent(event) {
     productId: event.productId,
     action: event.action,
     createdAt: event.createdAt || new Date().toISOString(),
+    dwellMs: Number.isInteger(event.dwellMs) && event.dwellMs >= 0
+      ? event.dwellMs
+      : null,
   };
 }
 
@@ -347,7 +350,14 @@ function recency(event, now) {
 }
 
 function evidenceFor(event, now) {
-  return actionStrength[event.action] * recency(event, now);
+  const strength = event.action === "skip"
+    ? event.dwellMs === null || event.dwellMs < 2000
+      ? -0.15
+      : event.dwellMs > 5000
+        ? 0.15
+        : 0
+    : actionStrength[event.action];
+  return strength * recency(event, now);
 }
 
 function featureAffinity(feature, candidate, profile, context) {

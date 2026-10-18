@@ -29,26 +29,34 @@ test('negative semantic feedback is scoped, normalized, and server-only', async 
     '20261018030000_feed_feedback_actions.sql',
     '20261018040000_catalog_title_embeddings.sql',
     '20261018050000_negative_semantic_feedback.sql',
+    '20261018060000_semantic_search_and_retention.sql',
   ]) await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
 
   const users = {
     skips: '00000000-0000-0000-0000-000000000101',
     price: '00000000-0000-0000-0000-000000000102',
     category: '00000000-0000-0000-0000-000000000103',
+    retained: '00000000-0000-0000-0000-000000000104',
+    search: '00000000-0000-0000-0000-000000000105',
   };
   await db.query('insert into auth.users(id) select unnest($1::uuid[])', [Object.values(users)]);
 
   async function addProduct(asin, embedding, {
     priceCents = 5000,
     category = 'Electronics',
+    titleEmbedding = null,
   } = {}) {
     await db.query(`insert into public.catalog_products(
       asin, title, product_url, captured_at, last_seen_at, hashtags,
-      price_cents, main_category, embedding
+      price_cents, main_category, embedding, title_embedding
     ) values (
       $1, $1, 'https://example.com', now(), now(), ARRAY['#test_product'],
-      $2, $3, $4::extensions.vector
-    )`, [asin, priceCents, category, embedding ? vectorText(embedding) : null]);
+      $2, $3, $4::extensions.vector, $5::extensions.vector
+    )`, [
+      asin, priceCents, category,
+      embedding ? vectorText(embedding) : null,
+      titleEmbedding ? vectorText(titleEmbedding) : null,
+    ]);
   }
 
   async function negative(userId, asin, action, dwellMs = null) {
@@ -63,29 +71,66 @@ test('negative semantic feedback is scoped, normalized, and server-only', async 
     return result.rows[0].applied;
   }
 
-  await t.test('quick skips carry more semantic strength than long skips and retries are idempotent', async () => {
+  await t.test('quick skips are weak negatives, with retries remaining idempotent', async () => {
     await addProduct('NEG0000001', axis(0));
-    await addProduct('NEG0000002', axis(1));
     await addProduct('NEG0000003', null);
 
-    assert.equal(await negative(users.skips, 'NEG0000001', 'skip', 250), true);
-    assert.equal(await negative(users.skips, 'NEG0000002', 'skip', 5000), true);
-    assert.equal(await negative(users.skips, 'NEG0000001', 'skip', 250), false);
-    assert.equal(await negative(users.skips, 'NEG0000003', 'skip', 250), false);
+    assert.equal(await negative(users.skips, 'NEG0000001', 'skip', 1999), true);
+    assert.equal(await negative(users.skips, 'NEG0000001', 'skip', 1999), false);
+    assert.equal(await negative(users.skips, 'NEG0000003', 'skip', 1999), false);
 
     const rows = (await db.query(`select slot_index, signal_strength, embedding
       from public.user_skip_interest_embeddings where user_id = $1 order by slot_index`, [users.skips])).rows;
-    assert.equal(rows.length, 2);
-    assert.ok(rows[0].signal_strength > rows[1].signal_strength);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].signal_strength, 0.2);
     assert.ok(Math.abs(Math.hypot(...JSON.parse(rows[0].embedding)) - 1) < 1e-6);
-    assert.ok(Math.abs(Math.hypot(...JSON.parse(rows[1].embedding)) - 1) < 1e-6);
 
     const events = (await db.query(`select asin, dwell_ms, skip_kind
       from public.negative_product_interactions where user_id = $1 order by asin`, [users.skips])).rows;
     assert.deepEqual(events, [
-      { asin: 'NEG0000001', dwell_ms: 250, skip_kind: 'quick' },
-      { asin: 'NEG0000002', dwell_ms: 5000, skip_kind: 'long' },
+      { asin: 'NEG0000001', dwell_ms: 1999, skip_kind: 'quick' },
     ]);
+  });
+
+  await t.test('retained views weakly reinforce a matching interest and are idempotent', async () => {
+    await addProduct('RET0000001', axis(0));
+    const nearby = Array.from({ length: 384 }, (_, index) =>
+      index === 0 ? 0.8 : index === 1 ? 0.6 : 0);
+    await addProduct('RET0000002', nearby);
+    assert.equal(await positive(users.retained, 'RET0000001'), true);
+
+    const first = await db.query(`select public.record_retained_product_interaction(
+      $1, 'RET0000002', 5001) as applied`, [users.retained]);
+    const duplicate = await db.query(`select public.record_retained_product_interaction(
+      $1, 'RET0000002', 7000) as applied`, [users.retained]);
+    assert.equal(first.rows[0].applied, true);
+    assert.equal(duplicate.rows[0].applied, false);
+
+    const interests = (await db.query(`select slot_index, embedding
+      from public.user_interest_embeddings where user_id = $1`, [users.retained])).rows;
+    assert.equal(interests.length, 1);
+    assert.ok(JSON.parse(interests[0].embedding)[0] > 0.99);
+    assert.ok(JSON.parse(interests[0].embedding)[1] > 0);
+  });
+
+  await t.test('title semantic search orders matches and submitted queries add a weak preference once', async () => {
+    await addProduct('SEA0000001', axis(0), { titleEmbedding: axis(0) });
+    await addProduct('SEA0000002', axis(1), { titleEmbedding: axis(1) });
+    const results = (await db.query(`select asin, similarity
+      from public.search_catalog_products_by_title($1::extensions.vector, 10)`,
+    [vectorText(axis(0))])).rows;
+    assert.equal(results[0].asin, 'SEA0000001');
+    assert.ok(Number(results[0].similarity) > Number(results[1].similarity));
+
+    const queryKey = 'a'.repeat(64);
+    const learned = await db.query(`select public.record_search_product_interaction(
+      $1, 'SEA0000001', $2) as applied`, [users.search, queryKey]);
+    const duplicate = await db.query(`select public.record_search_product_interaction(
+      $1, 'SEA0000001', $2) as applied`, [users.search, queryKey]);
+    assert.equal(learned.rows[0].applied, true);
+    assert.equal(duplicate.rows[0].applied, false);
+    assert.equal((await db.query(`select count(*)::int as count
+      from public.user_interest_embeddings where user_id = $1`, [users.search])).rows[0].count, 1);
   });
 
   await t.test('price and category feedback lower only the relevant recommendation contexts', async () => {
@@ -131,9 +176,11 @@ test('negative semantic feedback is scoped, normalized, and server-only', async 
       has_function_privilege('authenticated', oid, 'execute') as authenticated,
       has_function_privilege('service_role', oid, 'execute') as service
       from pg_proc where proname in (
-        'record_negative_product_interaction', 'recommend_catalog_products'
+        'record_negative_product_interaction', 'record_retained_product_interaction',
+        'record_search_product_interaction', 'search_catalog_products_by_title',
+        'recommend_catalog_products'
       ) order by proname`)).rows;
-    assert.equal(privileges.length, 2);
+    assert.equal(privileges.length, 5);
     assert.ok(privileges.every(row => !row.anon && !row.authenticated && row.service));
     await db.exec('set role authenticated');
     await assert.rejects(db.query(`select public.record_negative_product_interaction(

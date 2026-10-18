@@ -19,7 +19,6 @@
   align-items: center;
   gap: 0.7rem;
   padding: 1rem 1.2rem;
-  border-bottom: 1px solid var(--line);
 }
 .input > svg {
   color: var(--plum);
@@ -32,56 +31,24 @@
   font: inherit;
   font-size: 1.1rem;
 }
-.input button {
+.input button:last-child {
   color: var(--muted);
   font-size: 0.6rem;
 }
-.suggestions,
-.results {
-  padding: 1.2rem;
+.input button[type="submit"] {
+  flex: none;
+  color: var(--ink);
+  font-size: 0.75rem;
 }
-.suggestions button {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.8rem 0;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.8rem;
-  text-align: left;
-}
-.suggestions button svg:last-child {
-  margin-left: auto;
-}
-.results > button {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.7rem 0;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-.results img {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 0.6rem;
-  object-fit: cover;
-}
-.results button > span {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-.results small {
-  margin-top: 0.2rem;
-  color: var(--muted);
+@media (max-width: 520px) {
+  .input {
+    flex-wrap: wrap;
+    padding: 0.8rem;
+  }
+  .input input {
+    width: calc(100% - 3rem);
+  }
+  .input button[type="submit"] {
+    margin-left: auto;
+  }
 }

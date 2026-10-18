@@ -20,7 +20,11 @@ test('backend routes validate actions and use the authenticated user ID', async 
     catalogSupabase: {
       rpc: async (name, args) => {
         calls.push({ name, args });
-        return ['record_positive_product_interaction', 'record_negative_product_interaction'].includes(name)
+        return [
+          'record_positive_product_interaction',
+          'record_negative_product_interaction',
+          'record_retained_product_interaction',
+        ].includes(name)
           ? { data: applied, error: null }
           : { data: [{ asin: 'B012345678', title: 'Coffee machine', similarity: 0.82 }], error: null };
       },
@@ -117,6 +121,32 @@ test('backend routes validate actions and use the authenticated user ID', async 
   assert.equal(invalidDwell.code, 400);
   assert.equal(calls.length, callsBeforeInvalidDwell);
 
+  request.body = { asin: 'B012345678', action: 'skip', dwellMs: 2000 };
+  const neutralView = response();
+  await userApi.handleInteraction(request, neutralView);
+  assert.deepEqual(neutralView.body, { applied: true, learning: 'neutral' });
+  assert.equal(calls.length, callsBeforeInvalidDwell);
+
+  request.body = { asin: 'B012345678', action: 'skip', dwellMs: 5000 };
+  const lastNeutralView = response();
+  await userApi.handleInteraction(request, lastNeutralView);
+  assert.deepEqual(lastNeutralView.body, { applied: true, learning: 'neutral' });
+  assert.equal(calls.length, callsBeforeInvalidDwell);
+
+  request.body = { asin: 'B012345678', action: 'skip', dwellMs: 5001 };
+  applied = true;
+  const retainedView = response();
+  await userApi.handleInteraction(request, retainedView);
+  assert.deepEqual(retainedView.body, { applied: true });
+  assert.deepEqual(calls.at(-1), {
+    name: 'record_retained_product_interaction',
+    args: {
+      p_user_id: '00000000-0000-0000-0000-000000000001',
+      p_asin: 'B012345678',
+      p_dwell_ms: 5001,
+    },
+  });
+
   request.query = { limit: '10', exclude: 'B000000001' };
   const feed = response();
   await userApi.handleRecommendations(request, feed);
@@ -171,6 +201,63 @@ test('backend routes validate actions and use the authenticated user ID', async 
   assert.ok(calls.some(call => call.orderColumn === 'asin' && call.orderOptions.ascending));
   assert.ok(calls.some(call => call.limit === 10));
   assert.ok(calls.some(call => call.columns?.includes('title_embedding')));
+});
+
+test('semantic search rejects gibberish and learns only from confident submitted searches', async () => {
+  const calls = [];
+  let embedCalls = 0;
+  const request = {
+    method: 'GET',
+    user: { id: '00000000-0000-0000-0000-000000000001' },
+    query: { query: 'fdsfadsfa' },
+    body: {},
+    catalogSupabase: {
+      rpc: async (name, args) => {
+        calls.push({ name, args });
+        if (name === 'search_catalog_products_by_title') {
+          return {
+            data: [
+              { asin: 'B012345678', title: 'Noise cancelling headphones', similarity: 0.72 },
+              { asin: 'B000000001', title: 'Bluetooth headphones', similarity: 0.61 },
+              { asin: 'B000000002', title: 'Unrelated product', similarity: 0.18 },
+            ],
+            error: null,
+          };
+        }
+        return { data: true, error: null };
+      },
+    },
+  };
+  const embed = async () => {
+    embedCalls += 1;
+    return Array.from({ length: 384 }, (_, index) => index === 0 ? 1 : 0);
+  };
+
+  const gibberish = response();
+  await userApi.handleSemanticSearch(request, gibberish, embed);
+  assert.deepEqual(gibberish.body, { products: [], valid: false, learned: false });
+  assert.equal(embedCalls, 0);
+  assert.equal(calls.length, 0);
+
+  request.query.query = 'wireless headphones';
+  const preview = response();
+  await userApi.handleSemanticSearch(request, preview, embed);
+  assert.equal(preview.body.valid, true);
+  assert.equal(preview.body.learned, false);
+  assert.deepEqual(preview.body.products.map(product => product.asin), [
+    'B012345678',
+    'B000000001',
+  ]);
+  assert.equal(calls.length, 1);
+
+  request.method = 'POST';
+  request.body = { query: 'wireless headphones' };
+  const submitted = response();
+  await userApi.handleSemanticSearch(request, submitted, embed);
+  assert.equal(submitted.body.learned, true);
+  assert.equal(calls.at(-1).name, 'record_search_product_interaction');
+  assert.equal(calls.at(-1).args.p_asin, 'B012345678');
+  assert.match(calls.at(-1).args.p_query_key, /^[0-9a-f]{64}$/);
 });
 
 test('history product route validates ASIN batches and reads through the server catalog client', async () => {

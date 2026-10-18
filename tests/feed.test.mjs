@@ -317,6 +317,25 @@ test("skip and show-less are negative, recency-weighted preference events", () =
   assert.equal(getFeed(catalog, profile)[0].id, "A000000003");
 });
 
+test("skip dwell time softly discourages quick skips, ignores middling views, and reinforces retained views", () => {
+  const now = Date.parse("2026-10-20T00:00:00.000Z");
+  const skipped = (dwellMs) => recordAction(createProfile(), catalog[0].id, "skip", {
+    id: `dwell-${dwellMs}`,
+    createdAt: new Date(now).toISOString(),
+    dwellMs,
+  });
+  const quickSkip = personalScore(catalog[1], skipped(1999), catalog, now);
+  const neutralView = personalScore(catalog[1], skipped(2000), catalog, now);
+  const lastNeutralView = personalScore(catalog[1], skipped(5000), catalog, now);
+  const retainedView = personalScore(catalog[1], skipped(5001), catalog, now);
+  const noFeedback = personalScore(catalog[1], createProfile(), catalog, now);
+
+  assert.ok(quickSkip < noFeedback);
+  assert.equal(neutralView, noFeedback);
+  assert.equal(lastNeutralView, noFeedback);
+  assert.ok(retainedView > noFeedback);
+});
+
 test("explicit dislike strongly lowers same-category products without filtering them out", () => {
   const disliked = normalizeProduct({
     asin: "A000000040",

@@ -140,6 +140,15 @@ feedback demote them. Title vectors are loaded for catalog candidates and
 interaction history. Titles without vectors are omitted from that feature, and
 the other personal signals are renormalized.
 
+The search overlay embeds a submitted query with the same model and retrieves
+the closest products by title meaning. Queries must pass basic quality checks
+and have a title similarity of at least 0.25 before they can guide
+recommendations. A valid submitted search nudges the closest existing hashtag
+interest by a 0.03 learning rate, at most once per normalized query per day;
+if there is no existing interest, it initializes the first one from that
+product. Query text itself is not stored. Live typing previews matches but
+does not change recommendations until the user submits the search.
+
 `npm run generate:hashtags` embeds each updated hashtag list and fills a missing
 title vector for that catalog row. To fill either missing vector after the
 migration or after direct database edits, run:
@@ -163,6 +172,9 @@ Authenticated Express routes (Bearer Supabase access token):
 - `POST /user/interactions` accepts `like`, `save`, `skip`, `too_expensive`,
   and `less_category`. A skip may include an integer `dwellMs`; requests use
   the authenticated user ID and are idempotent per product/action.
+- `GET /user/search?query=...` returns title-semantic matches without changing
+  preferences; `POST /user/search` performs the same search and weakly learns
+  from its closest confident result.
 
 The Discover and Scroll experiences call these routes. The feed ranks products
 using four personal signals—main category (10%), subcategory (20%), hashtags
@@ -188,8 +200,10 @@ five-slot positive interest model. Negative signals stay in separate
 database-side avoidance models, so they do not pull positive vectors away from
 a user's tastes:
 
-- A skip within two seconds is a stronger avoidance signal than a longer
-  viewed skip. Both cluster into at most five avoided semantic areas.
+- A skip before two seconds is a small avoidance signal. Views from two to
+  five seconds are neutral, and views longer than five seconds give a small
+  positive retention signal to the closest existing interest, or start one if
+  there is no positive interest yet.
 - “Too expensive” creates up to five semantic price contexts. It only lowers
   related products at or above the learned price ceiling, preserving cheaper
   alternatives.
@@ -207,8 +221,8 @@ reduced by 80%. This keeps fresh products ahead while allowing a particularly
 strong match to return when the catalog is small.
 
 Run `npm run supabase:push` to apply any pending local migration, including
-`20261018050000_negative_semantic_feedback.sql`, which adds avoidance vectors,
-the feedback ledger, dwell-time field, and database-side penalties. Run
+`20261018060000_semantic_search_and_retention.sql`, which adds semantic search,
+weak search and retention learning, and the revised quick-skip strength. Run
 `npm run backfill:embeddings` to populate missing catalog embeddings. Products
 without a valid title vector do not contribute title-specific ranking evidence.
 
