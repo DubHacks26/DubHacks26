@@ -1,29 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { getCatalogProducts, getRecommendations } from "@/api/UserAPI";
 import { navItems } from "@/utils/shopScrollerData";
 import { getFeed, matches, defaultPreferences, likedCollectionId } from "@/utils/feed.mjs";
 import { normalizeCatalogProduct } from "@/utils/catalogProduct.mjs";
 import { restoreCart, toCartItem } from "@/utils/cart.mjs";
-import FeedPreferences from "@/components/feed-preferences/feed-preferences";
 import Discover from "@/components/discover/discover";
 import ProductScroll from "@/components/product-scroll/product-scroll";
-import Cart from "@/components/cart/cart";
-import Missions from "@/components/missions/missions";
-import Collections from "@/components/collections/collections";
-import Budget from "@/components/budget/budget";
-import Friends from "@/components/friends/friends";
-import Profile from "@/components/profile/profile";
-import ProductDrawer from "@/components/product-drawer/product-drawer";
-import CollectionPicker from "@/components/collection-picker/collection-picker";
-import SearchOverlay from "@/components/search-overlay/search-overlay";
 import Brand from "@/components/brand/brand";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./shop-scroller.module.css";
+
+const FeedPreferences = dynamic(() => import("@/components/feed-preferences/feed-preferences"));
+const Cart = dynamic(() => import("@/components/cart/cart"));
+const Missions = dynamic(() => import("@/components/missions/missions"));
+const Collections = dynamic(() => import("@/components/collections/collections"));
+const Budget = dynamic(() => import("@/components/budget/budget"));
+const Friends = dynamic(() => import("@/components/friends/friends"));
+const Profile = dynamic(() => import("@/components/profile/profile"));
+const ProductDrawer = dynamic(() => import("@/components/product-drawer/product-drawer"));
+const CollectionPicker = dynamic(() => import("@/components/collection-picker/collection-picker"));
+const SearchOverlay = dynamic(() => import("@/components/search-overlay/search-overlay"));
 
 function errorMessage(error, fallback) {
   const responseError = error?.response?.data?.error;
@@ -109,6 +111,7 @@ export default function AppShell({
   setProfile,
   user,
   initialPage = "Home",
+  learningRevision = 0,
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -123,24 +126,26 @@ export default function AppShell({
   const [recommendationProducts, setRecommendationProducts] = useState([]);
   const [feedTimestamp] = useState(() => Date.now());
   const saved = profile.saved;
-  const productById = new Map((catalogProducts || []).map(product => [product.id, product]));
-  for (const recommended of recommendationProducts) {
-    const catalogProduct = productById.get(recommended.id);
-    productById.set(recommended.id, {
-      ...catalogProduct,
-      ...recommended,
-      similarity: recommended.similarity,
-    });
-  }
-  const products = [...productById.values()];
-  const sourceProducts = historyProducts.map(normalizeCatalogProduct);
-  const feed = getFeed(products, profile, feedTimestamp, [...products, ...sourceProducts]);
-  const searchableProducts = getFeed(
+  const productById = useMemo(() => {
+    const byId = new Map((catalogProducts || []).map(product => [product.id, product]));
+    for (const recommended of recommendationProducts) {
+      byId.set(recommended.id, { ...byId.get(recommended.id), ...recommended });
+    }
+    return byId;
+  }, [catalogProducts, recommendationProducts]);
+  const products = useMemo(() => [...productById.values()], [productById]);
+  const sourceProducts = useMemo(() => historyProducts.map(normalizeCatalogProduct), [historyProducts]);
+  // Rank once; hiding seen items does not change the score of other products.
+  const searchableProducts = useMemo(() => getFeed(
     products,
     { ...profile, seen: [] },
     feedTimestamp,
     [...products, ...sourceProducts],
-  );
+  ), [products, profile, feedTimestamp, sourceProducts]);
+  const feed = useMemo(() => {
+    const seen = new Set(profile.seen);
+    return searchableProducts.filter(product => !seen.has(product.id));
+  }, [searchableProducts, profile.seen]);
   const currentProduct = feed[0];
   const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
   // Scroll is an intentional, stable reel. Feedback can improve Discover
@@ -193,25 +198,39 @@ export default function AppShell({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getCatalogProducts(100, { refresh: catalogReload > 0 }),
-      getRecommendations(100, profile.seen),
-    ])
-      .then(([rows, recommendations]) => {
+    getCatalogProducts(100, { refresh: catalogReload > 0 })
+      .then(rows => {
         if (cancelled) return;
         setCatalogProducts(rows.map(normalizeCatalogProduct));
-        setRecommendationProducts(recommendations.map(normalizeCatalogProduct));
+        setCatalogError("");
       })
       .catch(error => {
         if (cancelled) return;
-        setCatalogProducts([]);
         setCatalogError(errorMessage(error, "The product catalog could not be loaded."));
       })
       .finally(() => {
         if (!cancelled) setCatalogLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user.id, catalogReload, profile.events.length, profile.seen]);
+  }, [user.id, catalogReload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Coalesce bursts of feedback. Catalog rendering never waits for this request.
+    const timer = window.setTimeout(() => {
+      getRecommendations(100, profile.seen)
+        .then(rows => {
+          if (!cancelled) setRecommendationProducts(rows.map(normalizeCatalogProduct));
+        })
+        .catch(() => {
+          // Keep the usable catalog and previous recommendations on transient failure.
+        });
+    }, profile.events.length ? 400 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [user.id, catalogReload, profile.events.length, profile.seen, learningRevision]);
 
   const showToast = (message) => {
     setToast(message);
@@ -241,13 +260,13 @@ export default function AppShell({
     showToast("Item removed from your cart.");
   };
 
-  const persistAction = (product, action, successMessage, onSaved) => {
+  const persistAction = (product, action, successMessage, onSaved, context = {}) => {
     const asin = product.asin || product.id;
     if (!/^[A-Z0-9]{10}$/.test(String(asin))) {
       showToast("This demo product isn’t in the catalog, so its action can’t be saved to your account.");
       return Promise.resolve(null);
     }
-    return onPersistAction(asin, action)
+    return onPersistAction(asin, action, context)
       .then(event => {
         if (event.embeddingError || event.embeddingApplied === false) {
           showToast("Action saved. Vector learning is temporarily unavailable; other feedback still guides your feed.");
@@ -349,7 +368,7 @@ export default function AppShell({
 
   const openCollectionPicker = (product) => setCollectionPickerProduct(product);
 
-  const swipe = (action) => {
+  const swipe = (action, context = {}) => {
     if (!currentProduct) return;
     persistAction(
       currentProduct,
@@ -358,6 +377,7 @@ export default function AppShell({
         ? "Liked. Your feed will learn from this."
         : null,
       event => setLastSwipe(event),
+      context,
     );
   };
   // Discover now passes "like" or "skip" directly (swipe up = skip, heart = like).
@@ -463,7 +483,7 @@ export default function AppShell({
       <ProductScroll
         onDetails={(product, type) => setDrawer({ product, type })}
         onHeart={heartFromScroll}
-        onSkip={product => persistAction(product, "skip", null)}
+        onSkip={(product, context) => persistAction(product, "skip", null, undefined, context)}
         onSave={openCollectionPicker}
         onShare={shareProduct}
         loading={catalogLoading}

@@ -22,7 +22,7 @@ export async function loadFeedProfile(userId) {
     fetchAll(
       supabase
         .from("product_interactions")
-        .select("id,asin,action,created_at")
+        .select("id,asin,action,dwell_ms,created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: true }),
     ),
@@ -53,6 +53,7 @@ export async function loadFeedProfile(userId) {
       id: event.id,
       productId: event.asin,
       action: event.action,
+      dwellMs: event.dwell_ms,
       createdAt: event.created_at,
     })),
   });
@@ -94,17 +95,21 @@ export async function saveFeedPreferences(userId, preferences, onboarded = true)
   if (error) throw new Error(error.message);
 }
 
-export async function saveProductAction(userId, asin, action) {
+export async function saveProductAction(userId, asin, action, { dwellMs } = {}) {
+  const normalizedDwellMs = Number.isInteger(dwellMs) && dwellMs >= 0 && dwellMs <= 3600000
+    ? dwellMs
+    : null;
   const { data, error } = await getSupabaseClient()
     .from("product_interactions")
-    .insert({ user_id: userId, asin, action })
-    .select("id,asin,action,created_at")
+    .insert({ user_id: userId, asin, action, dwell_ms: normalizedDwellMs })
+    .select("id,asin,action,dwell_ms,created_at")
     .single();
   if (error) throw new Error(error.message);
   return {
     id: data.id,
     productId: data.asin,
     action: data.action,
+    dwellMs: data.dwell_ms,
     createdAt: data.created_at,
   };
 }

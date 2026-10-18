@@ -367,3 +367,14 @@ test("unclassified products remain rankable without invented category matches", 
   assert.equal(unclassified.rating, null);
   assert.equal(getFeed([unclassified], createProfile())[0].id, "A000000005");
 });
+
+
+test("filtering a shared ranking preserves the unseen feed order", () => {
+  const now = Date.parse("2026-10-02T00:00:00.000Z");
+  const profile = recordAction(createProfile(), catalog[0].id, "like", {
+    id: "shared-ranking", createdAt: new Date(now).toISOString(),
+  });
+  const seen = new Set(profile.seen);
+  const ranked = getFeed(catalog, { ...profile, seen: [] }, now);
+  assert.deepEqual(ranked.filter(product => !seen.has(product.id)), getFeed(catalog, profile, now));
+});

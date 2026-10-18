@@ -55,9 +55,11 @@ export default function ProductScroll({
   const cardClickTimer = useRef(null);
   const suppressCardClick = useRef(false);
   const viewportRef = useRef(null);
+  const shownAt = useRef(0);
   const productCount = products.length;
   const index = clamp(cursor, 0, Math.max(productCount - 1, 0));
   const product = products[index];
+  const productId = product?.id;
   const isLiked = product ? liked.includes(product.id) : false;
   useEffect(() => () => {
     window.clearTimeout(wheelXTimer.current);
@@ -67,6 +69,10 @@ export default function ProductScroll({
     window.clearTimeout(exitTimer.current);
     window.clearTimeout(cardClickTimer.current);
   }, []);
+
+  useEffect(() => {
+    shownAt.current = performance.now();
+  }, [productId]);
 
   const showBoundary = (message) => {
     setBoundaryMessage(message);
@@ -87,7 +93,12 @@ export default function ProductScroll({
 
   const previous = () => moveTo(index - 1);
   const next = () => {
-    if (index < productCount - 1 && product) onSkip?.(product);
+    if (index < productCount - 1 && product) {
+      const startedAt = shownAt.current || performance.now();
+      onSkip?.(product, {
+        dwellMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      });
+    }
     moveTo(index + 1);
   };
   const heart = () => {

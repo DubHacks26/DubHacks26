@@ -15,7 +15,7 @@ import {
   saveFeedPreferences,
   saveProductAction,
 } from "@/utils/feed-persistence";
-import { recordPositiveInteraction } from "@/api/UserAPI";
+import { recordSemanticInteraction } from "@/api/UserAPI";
 import Landing from "@/components/landing/landing";
 import Onboarding from "@/components/onboarding/onboarding";
 import AppShell from "@/components/shop-scroller/shop-scroller";
@@ -35,6 +35,7 @@ export default function ShopScrollerExperience({ user, initialPage = "Home" }) {
   const [stage, setStage] = useState("loading");
   const [profile, setProfile] = useState(createProfile);
   const [historyProducts, setHistoryProducts] = useState([]);
+  const [learningRevision, setLearningRevision] = useState(0);
   const [loadError, setLoadError] = useState("");
   const storageKey = `shopscroller:profile:v1:${user.id}`;
   const collectionsKey = `shopscroller:collections:v1:${user.id}`;
@@ -132,18 +133,20 @@ export default function ShopScrollerExperience({ user, initialPage = "Home" }) {
     setStage("app");
   }
 
-  async function persistAction(asin, action) {
-    const event = await saveProductAction(user.id, asin, action);
+  async function persistAction(asin, action, context = {}) {
+    const event = await saveProductAction(user.id, asin, action, context);
+    // Commit visible feedback as soon as it is durable; learning is a second request.
+    setProfile((current) => syncLikedCollection(recordAction(current, asin, action, event)));
     let embeddingApplied = null;
     let embeddingError = null;
-    if (action === "like" || action === "save") {
+    if (["like", "save", "skip", "too_expensive", "less_category"].includes(action)) {
       try {
-        embeddingApplied = await recordPositiveInteraction(asin, action);
+        embeddingApplied = await recordSemanticInteraction(asin, action, context);
+        if (embeddingApplied) setLearningRevision(revision => revision + 1);
       } catch (error) {
         embeddingError = error.message;
       }
     }
-    setProfile((current) => syncLikedCollection(recordAction(current, asin, action, event)));
     return { ...event, embeddingApplied, embeddingError };
   }
 
@@ -170,6 +173,7 @@ export default function ShopScrollerExperience({ user, initialPage = "Home" }) {
   if (stage === "onboarding") return <Onboarding onDone={finishOnboarding} />;
   return (
     <AppShell
+      learningRevision={learningRevision}
       initialPage={initialPage}
       onPersistAction={persistAction}
       onUndoAction={undoPersistedAction}

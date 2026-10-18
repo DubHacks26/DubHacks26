@@ -20,7 +20,7 @@ test('backend routes validate actions and use the authenticated user ID', async 
     catalogSupabase: {
       rpc: async (name, args) => {
         calls.push({ name, args });
-        return name === 'record_positive_product_interaction'
+        return ['record_positive_product_interaction', 'record_negative_product_interaction'].includes(name)
           ? { data: applied, error: null }
           : { data: [{ asin: 'B012345678', title: 'Coffee machine', similarity: 0.82 }], error: null };
       },
@@ -74,6 +74,49 @@ test('backend routes validate actions and use the authenticated user ID', async 
   await userApi.handleInteraction(request, duplicate);
   assert.deepEqual(duplicate.body, { applied: false });
 
+  request.body = { asin: 'B012345678', action: 'skip', dwellMs: 250, user_id: 'spoofed' };
+  applied = true;
+  const negative = response();
+  await userApi.handleInteraction(request, negative);
+  assert.deepEqual(negative.body, { applied: true });
+  assert.deepEqual(calls.at(-1), {
+    name: 'record_negative_product_interaction',
+    args: {
+      p_user_id: '00000000-0000-0000-0000-000000000001',
+      p_asin: 'B012345678',
+      p_action: 'skip',
+      p_dwell_ms: 250,
+    },
+  });
+
+  request.body = { asin: 'B012345678', action: 'too_expensive' };
+  const price = response();
+  await userApi.handleInteraction(request, price);
+  assert.deepEqual(price.body, { applied: true });
+  assert.deepEqual(calls.at(-1), {
+    name: 'record_negative_product_interaction',
+    args: {
+      p_user_id: '00000000-0000-0000-0000-000000000001',
+      p_asin: 'B012345678',
+      p_action: 'too_expensive',
+      p_dwell_ms: null,
+    },
+  });
+
+  request.body = { asin: 'B012345678', action: 'less_category' };
+  const category = response();
+  await userApi.handleInteraction(request, category);
+  assert.deepEqual(category.body, { applied: true });
+  assert.equal(calls.at(-1).name, 'record_negative_product_interaction');
+  assert.equal(calls.at(-1).args.p_action, 'less_category');
+
+  request.body = { asin: 'B012345678', action: 'skip', dwellMs: -1 };
+  const invalidDwell = response();
+  const callsBeforeInvalidDwell = calls.length;
+  await userApi.handleInteraction(request, invalidDwell);
+  assert.equal(invalidDwell.code, 400);
+  assert.equal(calls.length, callsBeforeInvalidDwell);
+
   request.query = { limit: '10', exclude: 'B000000001' };
   const feed = response();
   await userApi.handleRecommendations(request, feed);
@@ -110,8 +153,15 @@ test('backend routes validate actions and use the authenticated user ID', async 
   const fallback = response();
   const callCountBeforeFallback = calls.length;
   await userApi.handleRecommendations(fallbackRequest, fallback);
-  assert.deepEqual(fallback.body, { products: [] });
-  assert.equal(calls.length, callCountBeforeFallback + 1);
+  assert.deepEqual(fallback.body, {
+    products: [{
+      asin: 'B012345678',
+      similarity: null,
+      main_category: 'Home & kitchen',
+      subcategory: 'Coffee makers',
+    }],
+  });
+  assert.equal(calls.length, callCountBeforeFallback + 2);
 
   const catalog = response();
   await userApi.handleCatalog(request, catalog);

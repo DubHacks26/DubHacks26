@@ -155,9 +155,9 @@ Authenticated Express routes (Bearer Supabase access token):
 
 - `GET /user/recommendations?limit=20&exclude=ASIN1,ASIN2` returns an
   interleaved, deduplicated catalog batch. New users get the newest products.
-- `POST /user/interactions` with `{"asin":"B012345678","action":"like"}`
-  (or `"save"`) updates one interest atomically. Repeated positive events for
-  the same product are ignored, and products without embeddings are skipped.
+- `POST /user/interactions` accepts `like`, `save`, `skip`, `too_expensive`,
+  and `less_category`. A skip may include an integer `dwellMs`; requests use
+  the authenticated user ID and are idempotent per product/action.
 
 The Discover and Scroll experiences call these routes. The feed ranks products
 using four personal signals—main category (10%), subcategory (20%), hashtags
@@ -173,17 +173,30 @@ Hashtag matching combines direct interaction history with the existing
 title score is lexical word overlap, not title embeddings. Product actions are
 saved per account in `product_interactions`; preferences are saved in
 `user_feed_preferences`. Likes and saves update the separate five-slot positive
-interest model, while skips, unlikes, and feedback remain explicit weighted
-events for local ranking. “I don't like this” in product details records a
-strong, 30-day-decaying penalty for that product's main category; it lowers
-similar-category ranking without removing those products from the catalog.
-Interaction influence decays with a 30-day half-life.
+interest model. Negative signals stay in separate database-side avoidance
+models, so they do not pull positive vectors away from a user's tastes:
+
+- A skip within two seconds is a stronger avoidance signal than a longer
+  viewed skip. Both cluster into at most five avoided semantic areas.
+- “Too expensive” creates up to five semantic price contexts. It only lowers
+  related products at or above the learned price ceiling, preserving cheaper
+  alternatives.
+- “I don't like this” records an avoided main category and embedding. It
+  lowers that category broadly, with the largest reduction for related items.
+
+Each negative action is idempotent per product/action, uses the same per-user
+advisory lock as positive updates, and is ignored gracefully if the product has
+no hashtag embedding. The penalty settings, quick-skip threshold, and learning
+rates live in the server-only `recommendation_negative_settings` table. The
+normal feed's direct feedback rules remain in place and continue to decay with
+a 30-day half-life.
 Already-seen products are excluded only for the current session; their feedback
 continues to personalize later sessions.
 
 Run `npm run supabase:push` to apply any pending local migration, including
-`20261018030000_feed_feedback_actions.sql`, which adds the UI's additional
-feedback action types. Run `npm run backfill:embeddings` to populate either
+`20261018050000_negative_semantic_feedback.sql`, which adds avoidance vectors,
+the feedback ledger, dwell-time field, and database-side penalties. Run
+`npm run backfill:embeddings` to populate either
 missing catalog embedding. The title-word baseline works without vectors.
 
 Interest similarity and learning rate live in

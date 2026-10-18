@@ -42,10 +42,15 @@ async function getRecommendations(limit = 100, exclude = []) {
   return response.data?.products || [];
 }
 
-async function recordPositiveInteraction(asin, action) {
-  const response = await AxiosInstance.post("/user/interactions", { asin, action });
+async function recordSemanticInteraction(asin, action, { dwellMs } = {}) {
+  const payload = { asin, action };
+  if (Number.isInteger(dwellMs)) payload.dwellMs = dwellMs;
+  const response = await AxiosInstance.post("/user/interactions", payload);
   return response.data?.applied === true;
 }
+
+// Retain this export for callers that only send positive actions.
+const recordPositiveInteraction = (asin, action) => recordSemanticInteraction(asin, action);
 
 async function signIn(credentials) {
   const response = await AxiosInstance.post("/auth/signin", credentials);
@@ -100,6 +105,7 @@ export {
   getCurrentSession,
   getUserInfo,
   onAuthStateChange,
+  recordSemanticInteraction,
   recordPositiveInteraction,
   signIn,
   signOut,

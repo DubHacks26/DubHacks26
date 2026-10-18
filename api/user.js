@@ -26,7 +26,10 @@ async function handleRecommendations(req, res) {
     console.error('Recommendation lookup failed:', error);
     return res.status(503).json({ error: 'Recommendations are temporarily unavailable.' });
   }
-  const candidates = (data || []).filter(product => Number.isFinite(product.similarity));
+  // Cold-start rows deliberately have a neutral similarity. Keep a null value
+  // too for compatibility with a database that has not yet applied the latest
+  // recommendation migration.
+  const candidates = data || [];
   if (!candidates.length) return res.json({ products: [] });
   const { data: details, error: detailsError } = await client.from('catalog_products')
     .select('asin,main_category,subcategory,bought_in_past_month,badge,last_seen_at')
@@ -65,21 +68,42 @@ async function handleCatalog(req, res) {
 async function handleInteraction(req, res) {
   const client = catalogClient(req, res);
   if (!client) return;
-  const { asin, action } = req.body || {};
-  if (typeof asin !== 'string' || !/^[A-Z0-9]{10}$/.test(asin)
-      || !['like', 'save'].includes(action)) {
-    return res.status(400).json({ error: 'Provide a catalog ASIN and a like or save action.' });
+  const { asin, action, dwellMs } = req.body || {};
+  const positive = ['like', 'save'].includes(action);
+  const negative = ['skip', 'too_expensive', 'less_category'].includes(action);
+  const hasDwell = dwellMs !== undefined && dwellMs !== null;
+  if (typeof asin !== 'string' || !/^[A-Z0-9]{10}$/.test(asin) || (!positive && !negative)
+      || (action === 'skip' && hasDwell
+        && (!Number.isInteger(dwellMs) || dwellMs < 0 || dwellMs > 3600000))
+      || (action !== 'skip' && hasDwell)) {
+    return res.status(400).json({
+      error: 'Provide a catalog ASIN and a supported semantic action. Skip duration must be a whole number of milliseconds.',
+    });
   }
-  const { data, error } = await client.rpc('record_positive_product_interaction', {
-    p_user_id: req.user.id,
-    p_asin: asin,
-    p_action: action,
-    p_threshold: SIMILARITY_THRESHOLD,
-    p_learning_rate: LEARNING_RATE,
-  });
+  const rpc = positive
+    ? {
+        name: 'record_positive_product_interaction',
+        args: {
+          p_user_id: req.user.id,
+          p_asin: asin,
+          p_action: action,
+          p_threshold: SIMILARITY_THRESHOLD,
+          p_learning_rate: LEARNING_RATE,
+        },
+      }
+    : {
+        name: 'record_negative_product_interaction',
+        args: {
+          p_user_id: req.user.id,
+          p_asin: asin,
+          p_action: action,
+          p_dwell_ms: action === 'skip' && hasDwell ? dwellMs : null,
+        },
+      };
+  const { data, error } = await client.rpc(rpc.name, rpc.args);
   if (error) {
-    console.error('Interest update failed:', error);
-    return res.status(503).json({ error: 'The interaction could not update interests.' });
+    console.error('Semantic interaction update failed:', error);
+    return res.status(503).json({ error: 'The interaction could not update recommendations.' });
   }
   return res.json({ applied: data === true });
 }

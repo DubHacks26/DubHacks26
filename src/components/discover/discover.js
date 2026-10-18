@@ -10,14 +10,37 @@ import styles from "./discover.module.css";
 
 export default function Discover({ products, product, nextProduct, profile, noMatches, canUndo, onTune, onRevisit, onReset, onDetails, onNavigate, onSave, onShare, onSwipe, onUndo, saved, cart = [], cartLoading = false, onCart, onRemoveFromCart, onBudget }) {
   const gesture = useRef(null);
+  const shownAt = useRef(0);
+  const pendingInteraction = useRef(null);
+  const productId = product?.id;
   // motion is "" | "skip" | "like"
   const [motion, setMotion] = useState("");
   useEffect(() => {
+    shownAt.current = performance.now();
+    pendingInteraction.current = null;
+  }, [productId]);
+  useEffect(() => {
     if (!motion) return;
-    const timer = window.setTimeout(() => { onSwipe(motion); setMotion(""); }, 260);
+    const interaction = pendingInteraction.current;
+    const timer = window.setTimeout(() => {
+      pendingInteraction.current = null;
+      onSwipe(motion, interaction);
+      setMotion("");
+    }, 260);
     return () => window.clearTimeout(timer);
   }, [motion, onSwipe]);
-  const swipe = direction => { if (product && !motion) setMotion(direction); };
+  const swipe = direction => {
+    if (!product || motion) return;
+    if (direction === "skip") {
+      const startedAt = shownAt.current || performance.now();
+      pendingInteraction.current = {
+        dwellMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      };
+    } else {
+      pendingInteraction.current = null;
+    }
+    setMotion(direction);
+  };
   const goBack = () => { if (canUndo && !motion) onUndo(); };
   useEffect(() => {
     const handleKey = event => {
