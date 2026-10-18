@@ -27,6 +27,7 @@ const ProductDrawer = dynamic(() => import("@/components/product-drawer/product-
 const CollectionPicker = dynamic(() => import("@/components/collection-picker/collection-picker"));
 const SearchOverlay = dynamic(() => import("@/components/search-overlay/search-overlay"));
 const SearchResults = dynamic(() => import("@/components/search-results/search-results"));
+const TasteMap = dynamic(() => import("@/components/taste-map/taste-map"));
 
 function errorMessage(error, fallback) {
   const responseError = error?.response?.data?.error;
@@ -59,14 +60,14 @@ function Sidebar({ page, username, count, catalogSize, cartCount }) {
           </Link>
         ))}
       </nav>
-      <div className={styles.tasteCard}>
+      <Link className={styles.tasteCard} href="/taste-map">
         <Icon name="sparkles" size={18} />
         <strong>Your taste is taking shape</strong>
         <p>{hasLikes ? `${count} like${count === 1 ? " is" : "s are"} shaping your recommendations.` : "Heart something to start shaping your recommendations."}</p>
         <div>
           <i style={{ width: `${Math.min((count / catalogSize) * 100, 100)}%` }} />
         </div>
-      </div>
+      </Link>
       <div className={styles.user}>
         <div>{username.slice(0, 2).toUpperCase()}</div>
         <span>
@@ -121,7 +122,9 @@ export default function AppShell({
     : null;
   const page = pathname === "/search"
     ? "Search"
-    : collectionId ? "Collections" : navItems.find(item => item.href === pathname)?.label || initialPage;
+    : pathname === "/taste-map"
+      ? "Taste Map"
+      : collectionId ? "Collections" : navItems.find(item => item.href === pathname)?.label || initialPage;
   const [catalogProducts, setCatalogProducts] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
@@ -508,6 +511,7 @@ export default function AppShell({
     );
   else if (page === "Missions")
     content = <Missions onDiscover={() => navigateTo("Home")} />;
+  else if (page === "Taste Map") content = <TasteMap />;
   else if (page === "Collections")
     content = (
       <Collections

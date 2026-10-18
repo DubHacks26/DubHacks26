@@ -65,11 +65,22 @@
   background: var(--plum);
 }
 .tasteCard {
+  display: block;
   margin-top: auto;
   padding: 1rem;
   border-radius: 1rem;
   background: var(--blush);
   color: var(--plum-dark);
+  text-decoration: none;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.tasteCard:hover {
+  box-shadow: 0 12px 28px rgb(109 58 99 / 15%);
+  transform: translateY(-2px);
+}
+.tasteCard:focus-visible {
+  outline: 3px solid rgb(109 58 99 / 35%);
+  outline-offset: 3px;
 }
 .tasteCard strong {
   display: block;

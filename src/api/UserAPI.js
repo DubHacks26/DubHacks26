@@ -64,6 +64,17 @@ async function recordSemanticInteraction(asin, action, { dwellMs } = {}) {
   return response.data?.applied === true;
 }
 
+async function getHashtagGraph({ hashtag, limit = 90, linkLimit = 500 } = {}) {
+  const response = await AxiosInstance.get("/hashtags/graph", {
+    params: {
+      ...(hashtag ? { hashtag } : {}),
+      limit,
+      linkLimit,
+    },
+  });
+  return response.data || { nodes: [], links: [] };
+}
+
 // Retain this export for callers that only send positive actions.
 const recordPositiveInteraction = (asin, action) => recordSemanticInteraction(asin, action);
 
@@ -116,6 +127,7 @@ async function signOut() {
 
 export {
   getCatalogProducts,
+  getHashtagGraph,
   getRecommendations,
   getProductsByAsins,
   searchCatalogProducts,
