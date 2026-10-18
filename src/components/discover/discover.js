@@ -137,7 +137,7 @@ export default function Discover({ products, product, nextProduct, profile, noMa
       </>}
       </section>
     </section>
-    <DiscoverInsights compact onNavigate={onNavigate} products={products} profile={profile} onTune={onTune} showBudget={false} />
+    <DiscoverInsights compact products={products} profile={profile} onTune={onTune} showBudget={false} />
   </div>
   </div>;
 }

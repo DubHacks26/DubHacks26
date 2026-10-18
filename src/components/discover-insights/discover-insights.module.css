@@ -105,52 +105,6 @@
   color: var(--plum);
   font-size: 0.7rem;
 }
-.friend {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding-top: 0.8rem;
-}
-.friend img {
-  width: 2.7rem;
-  height: 2.7rem;
-  border-radius: 0.65rem;
-  object-fit: cover;
-}
-.friend p {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  margin: 0;
-  font-size: 0.64rem;
-}
-.friend p span,
-.friend p small {
-  margin-top: 0.1rem;
-  color: var(--muted);
-}
-.friend > svg {
-  color: var(--coral);
-}
-.tip {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.8rem 1rem;
-  border-radius: 1rem;
-  background: var(--blush);
-  color: var(--plum-dark);
-}
-.tip p {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  font-size: 0.66rem;
-}
-.tip span {
-  margin-top: 0.1rem;
-  opacity: 0.75;
-}
 @media (max-width: 1020px) {
   .insights {
     display: none;

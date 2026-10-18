@@ -1,20 +1,11 @@
 import Icon from "@/components/icon/icon";
-import ProductImage from "@/components/product-image/product-image";
 import styles from "./discover-insights.module.css";
 
-export default function DiscoverInsights({ onNavigate, products, saved = [], profile, onTune, showBudget = true, compact = false }) {
+export default function DiscoverInsights({ products, saved = [], profile, onTune, showBudget = true, compact = false }) {
   return (
     <aside className={`${styles.insights} ${compact ? styles.compact : ""}`}>
       <TasteCard onOpen={onTune} profile={profile} />
       {showBudget && <BudgetCard products={products} saved={saved} />}
-      <FriendsCard onOpen={() => onNavigate("Friends")} products={products} />
-      <div className={styles.tip}>
-        <Icon filled name="zap" size={18} />
-        <p>
-          <strong>Quick tip</strong>
-          <span>Use arrow keys to swipe faster.</span>
-        </p>
-      </div>
     </aside>
   );
 }
@@ -51,32 +42,6 @@ function BudgetCard({ products, saved }) {
         <span>${total} planned</span>
         <span>$400 goal</span>
       </p>
-    </section>
-  );
-}
-
-function FriendsCard({ onOpen, products }) {
-  return (
-    <section className={styles.panel}>
-      <div className={styles.panelHead}>
-        <span>
-          <Icon name="users" size={17} /> Friends are loving
-        </span>
-        <button onClick={onOpen} type="button">
-          View all
-        </button>
-      </div>
-      {products.slice(1, 3).map((product, index) => (
-        <div className={styles.friend} key={product.id}>
-          <ProductImage alt="" src={product.image} />
-          <p>
-            <strong>{index ? "Alex liked" : "Maya saved"}</strong>
-            <span>{product.name}</span>
-            <small>{index ? "1 hr ago" : "12 min ago"}</small>
-          </p>
-          <Icon filled name="heart" size={17} />
-        </div>
-      ))}
     </section>
   );
 }

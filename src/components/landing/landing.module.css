@@ -82,42 +82,6 @@
   gap: 1.7rem;
   margin: 2rem 0 1.3rem;
 }
-.shoppers {
-  display: flex;
-  align-items: center;
-}
-.avatars {
-  display: flex;
-  margin-right: 0.6rem;
-}
-.avatars span {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  margin-left: -0.45rem;
-  place-items: center;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--blush);
-  font-size: 0.55rem;
-}
-.avatars span:nth-child(2) {
-  background: var(--sage);
-}
-.avatars span:nth-child(3) {
-  background: var(--lavender);
-}
-.shoppers p {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.7rem;
-}
-.shoppers strong {
-  color: var(--ink);
-  font-size: 0.86rem;
-}
 .note {
   display: flex;
   align-items: center;
@@ -248,28 +212,6 @@
   right: 0;
   transform: rotate(7deg);
 }
-.match {
-  position: absolute;
-  right: 5%;
-  bottom: 14%;
-  z-index: 4;
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 0.1rem 0.5rem;
-  padding: 0.8rem 1rem;
-  border-radius: 1rem;
-  background: var(--plum);
-  box-shadow: var(--shadow);
-  color: #fff;
-}
-.match svg {
-  grid-row: span 2;
-  align-self: center;
-}
-.match span {
-  font-size: 0.63rem;
-  opacity: 0.7;
-}
 .benefits {
   display: grid;
   max-width: 1180px;
@@ -343,9 +285,6 @@
   }
   .floatingProduct img {
     height: 110px;
-  }
-  .match {
-    right: 0;
   }
   .benefits {
     grid-template-columns: 1fr;

@@ -85,7 +85,7 @@ function Sidebar({ page, username, count, catalogSize, cartCount }) {
   );
 }
 
-function Topbar({ onSearch, onMessages, scrollMode }) {
+function Topbar({ onSearch, onFriends, scrollMode }) {
   return (
     <header className={`${styles.topbar} ${scrollMode ? styles.scrollTopbar : ""}`}>
       <Button className={styles.search} onClick={onSearch} variant="secondary">
@@ -93,17 +93,13 @@ function Topbar({ onSearch, onMessages, scrollMode }) {
         <span>What are you looking for?</span>
         <kbd>⌘ K</kbd>
       </Button>
-      <div className={styles.streak}>
-        <Icon filled name="zap" size={16} />
-        <strong>7</strong> day streak
-      </div>
       <Button
-        aria-label="Friends and messages"
-        onClick={onMessages}
-        title="Friends and messages"
+        aria-label="Friends"
+        onClick={onFriends}
+        title="Friends"
         variant="icon"
       >
-        <Icon name="message" size={19} />
+        <Icon name="users" size={19} />
       </Button>
     </header>
   );
@@ -595,7 +591,7 @@ export default function AppShell({
       <Sidebar page={page} count={profile.likes.length} catalogSize={catalogProducts?.length || 100} cartCount={cart.length} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} />
       <main className={styles.main}>
         <Topbar
-          onMessages={() => navigateTo("Friends")}
+          onFriends={() => navigateTo("Friends")}
           onSearch={() => setSearchOpen(true)}
           scrollMode={page === "Scroll" || page === "Search Scroll"}
         />

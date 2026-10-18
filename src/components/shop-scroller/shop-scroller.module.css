@@ -164,16 +164,6 @@
   font-family: inherit;
   font-size: 0.6rem;
 }
-.streak {
-  display: flex;
-  align-items: center;
-  gap: 0.28rem;
-  color: #b56f25;
-  font-size: 0.7rem;
-}
-.streak strong {
-  color: var(--ink);
-}
 .toast {
   position: fixed;
   z-index: 80;
@@ -213,8 +203,7 @@
   .search span {
     display: block;
   }
-  .search kbd,
-  .streak {
+  .search kbd {
     display: none;
   }
   .mobileNav {
@@ -301,7 +290,6 @@
 }
 .scrollShell .search kbd { border-color: var(--line); background: var(--paper); color: var(--muted); }
 .scrollShell .topbar > button { border-color: var(--line); background: #fff; color: var(--ink); }
-.scrollShell .streak strong { color: var(--ink); }
 .scrollShell .toast { background: #fff; color: var(--ink); }
 .scrollShell .mobileNav { border-color: var(--line); background: rgb(248 246 242 / 96%); }
 .scrollShell .mobileLink { color: var(--muted); }
@@ -321,8 +309,7 @@
     border: 0;
     background: linear-gradient(#f8f6f2ee, transparent);
   }
-  .scrollShell .scrollTopbar .search,
-  .scrollShell .scrollTopbar .streak { display: none; }
+  .scrollShell .scrollTopbar .search { display: none; }
   .scrollShell .scrollTopbar > button { margin-left: auto; border-color: var(--line); background: rgb(255 255 255 / 82%); }
   .scrollShell .mobileNav {
     position: fixed;

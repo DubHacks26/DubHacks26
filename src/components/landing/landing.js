@@ -48,16 +48,6 @@ export default function Landing({ onStart }) {
             <Button onClick={onStart}>
               Start discovering <Icon name="arrowRight" size={18} />
             </Button>
-            <div className={styles.shoppers}>
-              <div className={styles.avatars}>
-                <span>AM</span>
-                <span>JK</span>
-                <span>RL</span>
-              </div>
-              <p>
-                <strong>12k+</strong> happy scrollers
-              </p>
-            </div>
           </div>
           <p className={styles.note}>
             <Icon filled name="zap" size={15} /> Gets smarter with every swipe
@@ -99,11 +89,6 @@ export default function Landing({ onStart }) {
             </div>
           </article>
           <FloatingProduct placement="right" product={products[3]} />
-          <div className={styles.match}>
-            <Icon name="sparkles" size={17} />
-            <strong>96% match</strong>
-            <span>Made for your taste</span>
-          </div>
         </div>
       </section>
 
