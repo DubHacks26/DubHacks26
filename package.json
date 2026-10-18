@@ -6,7 +6,12 @@
     "dev": "NODE_ENV=development node app.js",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "supabase:push": "npx supabase db push",
+    "import:capture": "node scripts/import-capture.mjs",
+    "import:sample-capture": "npm run supabase:push && npm run import:capture",
+    "generate:hashtags": "node scripts/generate-hashtags.mjs",
+    "enrich:sample-capture": "npm run import:sample-capture && npm run generate:hashtags"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
