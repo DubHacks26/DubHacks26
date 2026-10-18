@@ -99,7 +99,7 @@ test("generated hashtag overlap helps outside a selected category", () => {
   );
 });
 
-test("title word overlap does not affect ranking without semantic embeddings", () => {
+test("title overlap favors a coffee maker without matching only on generic machine", () => {
   const seed = normalizeProduct({
     asin: "A000000008",
     title: "Espresso coffee machine",
@@ -114,60 +114,7 @@ test("title word overlap does not affect ranking without semantic embeddings", (
     id: "coffee-like",
     createdAt: new Date().toISOString(),
   });
-  assert.equal(personalScore(coffeeMaker, liked, candidates), personalScore(candyMachine, liked, candidates));
-});
-
-test("semantic title embeddings favor products with similar meaning", () => {
-  const vector = (index, value = 1, secondIndex = -1, secondValue = 0) => {
-    const embedding = Array(384).fill(0);
-    embedding[index] = value;
-    if (secondIndex >= 0) embedding[secondIndex] = secondValue;
-    return embedding;
-  };
-  const seed = normalizeProduct({
-    asin: "A000000030",
-    title: "Espresso coffee machine",
-    main_category: "Home & kitchen",
-    subcategory: "Coffee accessories",
-    hashtags: [],
-    price: 40,
-    rating: 4,
-    reviews: 10,
-    title_embedding: vector(0),
-  });
-  const semanticMatch = normalizeProduct({
-    ...seed,
-    asin: "A000000031",
-    title: "Compact espresso maker",
-    title_embedding: vector(0, 0.8, 1, 0.6),
-  });
-  const unrelated = normalizeProduct({
-    ...seed,
-    asin: "A000000032",
-    title: "Decorative wall art",
-    title_embedding: vector(1),
-  });
-  const candidates = [seed, semanticMatch, unrelated];
-  const liked = recordAction(createProfile(), seed.id, "like", {
-    id: "semantic-title-like",
-    createdAt: new Date().toISOString(),
-  });
-  const skipped = recordAction(createProfile(), seed.id, "skip", {
-    id: "semantic-title-skip",
-    createdAt: new Date().toISOString(),
-  });
-
-  assert.ok(personalScore(semanticMatch, liked, candidates) > personalScore(unrelated, liked, candidates));
-  assert.ok(personalScore(semanticMatch, skipped, candidates) < personalScore(unrelated, skipped, candidates));
-});
-
-test("title embeddings parse Supabase vector text and reject malformed values", () => {
-  const unitVector = Array(384).fill(0);
-  unitVector[0] = 1;
-  const vectorText = `[${unitVector.join(",")}]`;
-  assert.equal(normalizeProduct({ title_embedding: vectorText }).titleEmbedding.length, 384);
-  assert.equal(normalizeProduct({ title_embedding: "[1,not-a-number]" }).titleEmbedding, null);
-  assert.equal(normalizeProduct({ title_embedding: `[${Array(384).fill(0).join(",")}]` }).titleEmbedding, null);
+  assert.ok(personalScore(coffeeMaker, liked, candidates) > personalScore(candyMachine, liked, candidates));
 });
 
 test("semantic hashtag similarity contributes to personalization when available", () => {
@@ -221,7 +168,6 @@ test("repeated too-expensive feedback lowers the learned soft price ceiling", ()
   });
   const now = Date.parse("2026-10-20T00:00:00.000Z");
   let profile = createProfile();
-  profile.preferences.maxPrice = 150;
   for (let index = 0; index < 6; index += 1) {
     profile = recordAction(profile, rejected.id, "too_expensive", {
       id: `price-feedback-${index}`,

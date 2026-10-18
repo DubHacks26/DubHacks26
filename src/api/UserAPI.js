@@ -42,14 +42,6 @@ async function getRecommendations(limit = 100, exclude = []) {
   return response.data?.products || [];
 }
 
-async function getProductsByAsins(asins = []) {
-  if (!asins.length) return [];
-  const response = await AxiosInstance.get("/user/history-products", {
-    params: { asins: asins.join(",") },
-  });
-  return response.data?.products || [];
-}
-
 async function recordPositiveInteraction(asin, action) {
   const response = await AxiosInstance.post("/user/interactions", { asin, action });
   return response.data?.applied === true;
@@ -105,7 +97,6 @@ async function signOut() {
 export {
   getCatalogProducts,
   getRecommendations,
-  getProductsByAsins,
   getCurrentSession,
   getUserInfo,
   onAuthStateChange,

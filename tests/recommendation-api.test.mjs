@@ -30,7 +30,7 @@ test('backend routes validate actions and use the authenticated user ID', async 
             in: async (column, values) => {
               calls.push({ name, columns, column, values });
               return {
-                data: [{ asin: 'B012345678', title_embedding: '[0.1,0.2]', main_category: 'Home & kitchen', subcategory: 'Coffee makers' }],
+                data: [{ asin: 'B012345678', main_category: 'Home & kitchen', subcategory: 'Coffee makers' }],
                 error: null,
               };
             },
@@ -82,7 +82,6 @@ test('backend routes validate actions and use the authenticated user ID', async 
       asin: 'B012345678',
       title: 'Coffee machine',
       similarity: 0.82,
-      title_embedding: '[0.1,0.2]',
       main_category: 'Home & kitchen',
       subcategory: 'Coffee makers',
     }],
@@ -93,7 +92,7 @@ test('backend routes validate actions and use the authenticated user ID', async 
   });
   assert.deepEqual(calls.at(-1), {
     name: 'catalog_products',
-    columns: 'asin,title_embedding,main_category,subcategory,bought_in_past_month,badge,last_seen_at',
+    columns: 'asin,main_category,subcategory,bought_in_past_month,badge,last_seen_at',
     column: 'asin',
     values: ['B012345678'],
   });
@@ -119,51 +118,4 @@ test('backend routes validate actions and use the authenticated user ID', async 
   assert.deepEqual(catalog.body.products.map(product => product.asin), ['B012345678']);
   assert.ok(calls.some(call => call.orderColumn === 'asin' && call.orderOptions.ascending));
   assert.ok(calls.some(call => call.limit === 10));
-  assert.ok(calls.some(call => call.columns?.includes('title_embedding')));
-});
-
-test('history product route validates ASIN batches and reads through the server catalog client', async () => {
-  const calls = [];
-  const request = {
-    user: { id: '00000000-0000-0000-0000-000000000001' },
-    query: { asins: 'B012345678,B000000001,B012345678' },
-    catalogSupabase: {
-      from: name => ({
-        select: columns => ({
-          in: async (column, values) => {
-            calls.push({ name, columns, column, values });
-            return {
-              data: [{
-                asin: 'B012345678',
-                title: 'Coffee machine',
-                title_embedding: `[${Array(384).fill(0).map((_, index) => index === 0 ? 1 : 0).join(',')}]`,
-              }],
-              error: null,
-            };
-          },
-        }),
-      }),
-    },
-  };
-  const result = response();
-  await userApi.handleHistoryProducts(request, result);
-  assert.equal(result.code, 200);
-  assert.equal(result.body.products[0].asin, 'B012345678');
-  assert.ok(calls[0].columns.includes('title_embedding'));
-  assert.deepEqual(calls[0].values, ['B012345678', 'B000000001']);
-
-  request.query = { asins: 'invalid' };
-  const invalid = response();
-  await userApi.handleHistoryProducts(request, invalid);
-  assert.equal(invalid.code, 400);
-  assert.equal(calls.length, 1);
-
-  request.query = {
-    asins: Array.from({ length: 101 }, (_, index) =>
-      `B${String(index).padStart(9, '0')}`).join(','),
-  };
-  const tooMany = response();
-  await userApi.handleHistoryProducts(request, tooMany);
-  assert.equal(tooMany.code, 400);
-  assert.equal(calls.length, 1);
 });

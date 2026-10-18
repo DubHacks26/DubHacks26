@@ -132,14 +132,8 @@ list, while `catalog_products.title_embedding` independently contains the
 embedding of the product title. Both use `Xenova/all-MiniLM-L6-v2`, mean
 pooling, and L2 normalization. Separate triggers clear only the affected vector
 when hashtags or a title change, so a delayed worker cannot save a stale value.
-The recommender uses the hashtag-list vector for hashtag affinity and the
-separate title vector for semantic title affinity. The title-affinity signal
-compares each candidate with interacted product titles using cosine similarity,
-scaled from neutral at 0.2 to full similarity at 0.7 for the current MiniLM
-model. Like/save events reinforce similar meanings, while skips and negative
-feedback demote them. Title vectors are loaded for catalog candidates and
-interaction history. Titles without vectors are omitted from that feature, and
-the other personal signals are renormalized.
+The existing recommendation algorithm continues to use the hashtag-list vector;
+the title vector is stored for future semantic title features.
 
 `npm run generate:hashtags` embeds each updated hashtag list and fills a missing
 title vector for that catalog row. To fill either missing vector after the
@@ -167,18 +161,18 @@ Authenticated Express routes (Bearer Supabase access token):
 
 The Discover and Scroll experiences call these routes. The feed ranks products
 using four personal signals—main category (10%), subcategory (20%), hashtags
-(35%), and semantic title similarity (35%)—then blends that score with soft
-price fit (15%), smoothed review quality (12%), and popularity (8%), including
-best-seller badges and recent purchase counts. Missing catalog signals are
-omitted and the available weights are renormalized. Price is not a hard cutoff.
+(35%), and title-word overlap (35%)—then blends that score with soft price fit
+(15%), smoothed review quality (12%), and popularity (8%), including best-seller
+badges and recent purchase counts. Missing catalog signals are omitted and the
+available weights are renormalized. Price is not a hard cutoff.
 Onboarding and feed preferences use the catalog's 18 populated `main_category`
 labels; legacy broad selections such as Home or Electronics remain supported.
 
 Hashtag matching combines direct interaction history with the existing
-384-dimensional hashtag embedding similarity when vectors are available.
-Semantic title matching uses the separate 384-dimensional title embeddings.
-Product actions are saved per account in `product_interactions`; preferences are
-saved in `user_feed_preferences`. Likes and saves update the separate five-slot positive
+384-dimensional hashtag embedding similarity when vectors are available. The
+title score is lexical word overlap, not title embeddings. Product actions are
+saved per account in `product_interactions`; preferences are saved in
+`user_feed_preferences`. Likes and saves update the separate five-slot positive
 interest model, while skips, unlikes, and feedback remain explicit weighted
 events for local ranking. “I don't like this” in product details records a
 strong, 30-day-decaying penalty for that product's main category; it lowers
@@ -190,8 +184,7 @@ continues to personalize later sessions.
 Run `npm run supabase:push` to apply any pending local migration, including
 `20261018030000_feed_feedback_actions.sql`, which adds the UI's additional
 feedback action types. Run `npm run backfill:embeddings` to populate either
-missing catalog embedding. Catalog products without a valid title vector simply
-do not contribute title-specific evidence to the ranking.
+missing catalog embedding. The title-word baseline works without vectors.
 
 Interest similarity and learning rate live in
 `lib/recommendation-config.cjs`.
