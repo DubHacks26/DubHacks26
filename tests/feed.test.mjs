@@ -198,6 +198,20 @@ test("semantic hashtag similarity contributes to personalization when available"
     > personalScore(unrelated, liked, [...catalog, vectorMatch, unrelated]));
 });
 
+test("review volume has only a small effect and does not outweigh a better rating", () => {
+  const profile = createProfile();
+  const fewReviews = normalizeProduct({ asin: "A000000090", rating: 5, review_count: 5, price: 25 });
+  const manyReviews = { ...fewReviews, id: "A000000091", reviews: 100000 };
+  const lowerRating = { ...manyReviews, id: "A000000092", rating: 4.8 };
+  const lowRating = { ...fewReviews, id: "A000000093", rating: 1 };
+  const products = [fewReviews, manyReviews, lowerRating, lowRating];
+  const volumeAdvantage = score(manyReviews, profile, products) - score(fewReviews, profile, products);
+  assert.ok(volumeAdvantage > 0);
+  assert.ok(volumeAdvantage < 0.003, "review volume should barely change the overall score");
+  assert.ok(score(fewReviews, profile, products) > score(lowerRating, profile, products));
+  assert.ok(Number.isFinite(score({ ...fewReviews, reviews: null }, profile, products)));
+});
+
 test("price is a soft preference and never filters products out", () => {
   const profile = createProfile();
   profile.preferences = { categories: [], minPrice: 20, maxPrice: 30 };

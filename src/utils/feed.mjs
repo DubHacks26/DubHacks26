@@ -113,6 +113,7 @@ const overallWeights = {
 };
 
 const explorationWeight = 0.05;
+const reviewCountInfluence = 0.1;
 const dayInMs = 86_400_000;
 
 function parseList(value) {
@@ -503,7 +504,9 @@ function qualityScore(product, ratingPrior) {
   const priorStrength = 100;
   const smoothed = (count / (count + priorStrength)) * product.rating
     + (priorStrength / (count + priorStrength)) * ratingPrior;
-  return Math.max(0, Math.min(1, smoothed / 5));
+  // Keep the star rating useful while reducing review volume's effect by 90%.
+  const adjusted = product.rating + reviewCountInfluence * (smoothed - product.rating);
+  return Math.max(0, Math.min(1, adjusted / 5));
 }
 
 function popularityScore(product) {

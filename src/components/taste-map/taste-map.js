@@ -7,10 +7,8 @@ import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./taste-map.module.css";
 
-const MIN_EDGE_SIMILARITY = 0.7;
+const MIN_EDGE_SIMILARITY = 0.55;
 const LABELS_ZOOM_RATIO = 0.45;
-const MAX_VISIBLE_LABELS = 70;
-const LABEL_SPACING = 140;
 
 function displayName(name) {
   return String(name || "Untitled")
@@ -137,7 +135,6 @@ export default function TasteMap() {
         }
 
         const cameraPosition = forceGraph.camera().position;
-        const positioned = [];
         const width = host.clientWidth;
         const height = host.clientHeight;
         const nearbyNodes = [...nodes]
@@ -147,17 +144,14 @@ export default function TasteMap() {
 
         labelElements.forEach(element => { element.style.visibility = "hidden"; });
         for (const node of nearbyNodes) {
-          if (positioned.length >= MAX_VISIBLE_LABELS) break;
           if (cameraPosition.distanceTo({ x: node.x, y: node.y, z: node.z }) > fitDistance * 0.72) continue;
           const point = forceGraph.graph2ScreenCoords(node.x, node.y, node.z);
           if (point.x < 8 || point.x > width - 8 || point.y < 8 || point.y > height - 8) continue;
-          if (positioned.some(other => Math.hypot(other.x - point.x, other.y - point.y) < LABEL_SPACING)) continue;
 
           const element = labelElements.get(node.id);
           element.style.left = `${point.x}px`;
           element.style.top = `${point.y}px`;
           element.style.visibility = "visible";
-          positioned.push(point);
         }
       };
 

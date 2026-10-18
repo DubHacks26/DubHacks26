@@ -72,6 +72,7 @@ test('hashtag SQL migration and synchronization work together', async t => {
     '20261017233000_catalog_recommendations.sql',
     '20261018010000_hashtag_graph.sql',
     '20261018070000_taste_map_popularity_and_pruning.sql',
+    '20261018081000_lower_hashtag_similarity_threshold.sql',
   ]) await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
   const client = clientFor(db);
   const graph = async (name = null, limit = 100, linkLimit = 500) => {
@@ -80,7 +81,7 @@ test('hashtag SQL migration and synchronization work together', async t => {
     return result.data;
   };
   const rows = async table => (await db.query(`select * from public.${table} order by 1,2`)).rows;
-  const reset = () => db.exec('truncate public.hashtags cascade; truncate public.catalog_products cascade; update public.hashtag_graph_settings set neighbor_count=8, similarity_threshold=0.65');
+  const reset = () => db.exec('truncate public.hashtags cascade; truncate public.catalog_products cascade; update public.hashtag_graph_settings set neighbor_count=8, similarity_threshold=0.55');
 
   await t.test('empty graph, permissions, and database limits', async () => {
     assert.deepEqual(await graph(), { nodes: [], links: [] });

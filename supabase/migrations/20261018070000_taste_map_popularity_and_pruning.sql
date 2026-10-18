@@ -45,7 +45,7 @@ begin
     join public.hashtag_edges e on e.source_id = s.id or e.target_id = s.id
     join public.hashtags h on h.id = case when e.source_id = s.id then e.target_id else e.source_id end
     left join product_popularity popularity on popularity.name = h.name
-    where h.embedding is not null and e.similarity >= 0.70
+    where h.embedding is not null and e.similarity >= 0.55
   ), chosen as materialized (
     select * from candidates
     order by tier desc, relevance desc, popularity desc, name, id
@@ -54,7 +54,7 @@ begin
     select e.* from public.hashtag_edges e
     join chosen a on a.id = e.source_id
     join chosen b on b.id = e.target_id
-    where e.similarity >= 0.70
+    where e.similarity >= 0.55
     order by e.similarity desc, e.source_id, e.target_id
     limit p_link_limit
   )
