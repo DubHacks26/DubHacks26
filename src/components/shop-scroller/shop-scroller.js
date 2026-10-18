@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getCatalogProducts, getRecommendations } from "@/api/UserAPI";
 import { navItems } from "@/utils/shopScrollerData";
-import { getFeed, matches, defaultPreferences } from "@/utils/feed.mjs";
+import { getFeed, matches, defaultPreferences, likedCollectionId } from "@/utils/feed.mjs";
 import { normalizeCatalogProduct } from "@/utils/catalogProduct.mjs";
 import FeedPreferences from "@/components/feed-preferences/feed-preferences";
 import Discover from "@/components/discover/discover";
@@ -16,6 +16,7 @@ import Budget from "@/components/budget/budget";
 import Friends from "@/components/friends/friends";
 import Profile from "@/components/profile/profile";
 import ProductDrawer from "@/components/product-drawer/product-drawer";
+import CollectionPicker from "@/components/collection-picker/collection-picker";
 import SearchOverlay from "@/components/search-overlay/search-overlay";
 import Brand from "@/components/brand/brand";
 import Button from "@/components/button/button";
@@ -109,12 +110,16 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const page = navItems.find(item => item.href === pathname)?.label || initialPage;
+  const collectionId = pathname.startsWith("/collections/")
+    ? decodeURIComponent(pathname.slice("/collections/".length).split("/")[0])
+    : null;
+  const page = collectionId ? "Collections" : navItems.find(item => item.href === pathname)?.label || initialPage;
   const [catalogProducts, setCatalogProducts] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [catalogReload, setCatalogReload] = useState(0);
   const [recommendationProducts, setRecommendationProducts] = useState([]);
+  const [feedTimestamp] = useState(() => Date.now());
   const saved = profile.saved;
   const productById = new Map((catalogProducts || []).map(product => [product.id, product]));
   for (const recommended of recommendationProducts) {
@@ -127,20 +132,23 @@ export default function AppShell({
   }
   const products = [...productById.values()];
   const sourceProducts = historyProducts.map(normalizeCatalogProduct);
-  const feed = getFeed(products, profile, Date.now(), [...products, ...sourceProducts]);
+  const feed = getFeed(products, profile, feedTimestamp, [...products, ...sourceProducts]);
   const searchableProducts = getFeed(
     products,
     { ...profile, seen: [] },
-    Date.now(),
+    feedTimestamp,
     [...products, ...sourceProducts],
   );
   const currentProduct = feed[0];
   const matchingCount = products.filter(p => matches(p, profile.preferences)).length;
-  const scrollProducts = feed;
+  // Scroll is an intentional, stable reel. Feedback can improve Discover
+  // without reordering or removing cards underneath an in-progress gesture.
+  const scrollProducts = products;
   const [tuning, setTuning] = useState(false);
 
   const [lastSwipe, setLastSwipe] = useState(null);
   const [drawer, setDrawer] = useState(null);
+  const [collectionPickerProduct, setCollectionPickerProduct] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [toast, setToast] = useState("");
 
@@ -169,7 +177,7 @@ export default function AppShell({
         if (!cancelled) setCatalogLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user.id, catalogReload, profile.events.length]);
+  }, [user.id, catalogReload, profile.events.length, profile.seen]);
 
   const showToast = (message) => {
     setToast(message);
@@ -198,14 +206,91 @@ export default function AppShell({
       });
   };
 
-  const toggleSaved = (product) => {
-    const isAdding = !saved.includes(product.id);
-    return persistAction(
-      product,
-      isAdding ? "save" : "unsave",
-      isAdding ? `${product.name} saved` : `${product.name} removed`,
+  const customCollections = (profile.collections || [])
+    .filter(collection => collection.id !== likedCollectionId);
+
+  const createCollection = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    const duplicate = (profile.collections || []).find(collection =>
+      collection.name.toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
     );
+    if (duplicate) {
+      showToast(`“${duplicate.name}” already exists`);
+      return duplicate.id === likedCollectionId ? null : duplicate.id;
+    }
+    const id = `collection-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setProfile(current => ({
+      ...current,
+      collections: [
+        { id: likedCollectionId, name: "Liked", productIds: current.likes.map(String) },
+        ...(current.collections || []).filter(collection => collection.id !== likedCollectionId),
+        { id, name: trimmed, productIds: [] },
+      ],
+    }));
+    showToast(`${trimmed} created`);
+    return id;
   };
+
+  const updateCustomCollections = (nextCollections) => {
+    const previousSaved = new Set(saved.map(String));
+    const nextSaved = new Set(nextCollections.flatMap(collection => collection.productIds.map(String)));
+    setProfile(current => ({
+      ...current,
+      collections: [
+        { id: likedCollectionId, name: "Liked", productIds: current.likes.map(String) },
+        ...nextCollections,
+      ],
+      saved: [...nextSaved],
+    }));
+    for (const productId of new Set([...previousSaved, ...nextSaved])) {
+      const wasSaved = previousSaved.has(productId);
+      const isSaved = nextSaved.has(productId);
+      if (wasSaved === isSaved) continue;
+      const product = productById.get(productId) || { id: productId, asin: productId, name: "Product" };
+      persistAction(product, isSaved ? "save" : "unsave", isSaved ? `${product.name} saved` : `${product.name} removed`);
+    }
+  };
+
+  const saveProductToCollections = (product, selectedIds) => {
+    const nextCollections = customCollections.map(collection => {
+      const productIds = collection.productIds.map(String);
+      return {
+        ...collection,
+        productIds: selectedIds.includes(collection.id)
+          ? [...new Set([...productIds, String(product.id)])]
+          : productIds.filter(id => id !== String(product.id)),
+      };
+    });
+    updateCustomCollections(nextCollections);
+    setCollectionPickerProduct(null);
+  };
+
+  const removeFromCollection = (collectionIdToUpdate, product) => {
+    if (collectionIdToUpdate === likedCollectionId) {
+      persistAction(product, "unlike", `${product.name} removed from your hearts`);
+      return;
+    }
+    updateCustomCollections(customCollections.map(collection => ({
+      ...collection,
+      productIds: collection.id === collectionIdToUpdate
+        ? collection.productIds.filter(id => String(id) !== String(product.id))
+        : collection.productIds,
+    })));
+  };
+
+  const deleteCollection = (collectionIdToDelete) => {
+    updateCustomCollections(customCollections.filter(collection => collection.id !== collectionIdToDelete));
+  };
+
+  const removeFromAllCollections = (product) => {
+    updateCustomCollections(customCollections.map(collection => ({
+      ...collection,
+      productIds: collection.productIds.filter(id => String(id) !== String(product.id)),
+    })));
+  };
+
+  const openCollectionPicker = (product) => setCollectionPickerProduct(product);
 
   const act = (action) => {
     if (!currentProduct) return;
@@ -308,7 +393,7 @@ export default function AppShell({
         onReset={resetPreferences}
         onDetails={(product, type) => setDrawer({ product, type })}
         onNavigate={navigateTo}
-        onSave={toggleSaved}
+        onSave={openCollectionPicker}
         onShare={shareProduct}
         onSwipe={swipe}
         onUndo={undoSwipe}
@@ -321,7 +406,7 @@ export default function AppShell({
         onDetails={(product, type) => setDrawer({ product, type })}
         onHeart={heartFromScroll}
         onSkip={product => persistAction(product, "skip", "Skipped. Your feed will learn from this.")}
-        onSave={toggleSaved}
+        onSave={openCollectionPicker}
         onShare={shareProduct}
         loading={catalogLoading}
         error={catalogError}
@@ -338,9 +423,19 @@ export default function AppShell({
   else if (page === "Missions")
     content = <Missions onDiscover={() => navigateTo("Discover")} />;
   else if (page === "Collections")
-    content = <Collections catalogProducts={products} onSave={toggleSaved} saved={saved} onDiscover={() => navigateTo("Discover")} />;
+    content = (
+      <Collections
+        catalogProducts={products}
+        collectionId={collectionId}
+        collections={profile.collections || []}
+        onCreateCollection={createCollection}
+        onDeleteCollection={deleteCollection}
+        onDiscover={() => navigateTo("Discover")}
+        onRemoveFromCollection={removeFromCollection}
+      />
+    );
   else if (page === "Budget")
-    content = <Budget catalogProducts={products} onRemove={toggleSaved} saved={saved} />;
+    content = <Budget catalogProducts={products} onRemove={removeFromAllCollections} saved={saved} />;
   else if (page === "Friends") content = <Friends />;
   else content = <Profile profile={profile} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} onTune={() => setTuning(true)} />;
 
@@ -384,9 +479,19 @@ export default function AppShell({
         <ProductDrawer
           onClose={() => setDrawer(null)}
           onDislike={dislikeProductCategory}
-          onSave={toggleSaved}
+          onSave={openCollectionPicker}
           product={drawer.product}
           type={drawer.type}
+        />
+      )}
+      {collectionPickerProduct && (
+        <CollectionPicker
+          key={collectionPickerProduct.id}
+          collections={profile.collections || []}
+          onApply={selectedIds => saveProductToCollections(collectionPickerProduct, selectedIds)}
+          onClose={() => setCollectionPickerProduct(null)}
+          onCreateCollection={createCollection}
+          product={collectionPickerProduct}
         />
       )}
       {searchOpen && (

@@ -25,6 +25,8 @@ export const defaultPreferences = {
   maxPrice: 150,
 };
 
+export const likedCollectionId = "liked";
+
 const legacyCategories = ["Home", "Electronics", "Gaming", "Fashion", "Beauty", "Education"];
 
 const legacyCategoryAliases = {

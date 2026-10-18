@@ -20,7 +20,7 @@ export default function Profile({ profile, username, onTune }) {
     </div>
     <div className="shop-panel"><h2>Your preferences</h2>
       {[["Categories", p.categories]].map(([label, values]) => <div className={styles.signal} key={label}><Icon name="check" size={16} /><strong>{label}:</strong> {values.join(", ") || "Open to everything"}</div>)}
-      <p>Likes influence recommendations. Bookmarks stay in your wishlist. Feedback changes ranking without changing these preferences.</p>
+      <p>Likes appear in your Liked collection and influence recommendations. Saved finds stay organized in your collections.</p>
       <Button onClick={onTune}>Edit preferences</Button>
     </div>
   </section>;

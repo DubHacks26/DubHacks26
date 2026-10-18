@@ -8,9 +8,10 @@ import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import styles from "./product-scroll.module.css";
 
-const AXIS_LOCK = 8;
+const AXIS_LOCK = 12;
 const HEART_DISTANCE = 90;
-const WHEEL_DISTANCE = 150;
+const HORIZONTAL_WHEEL_DISTANCE = 180;
+const WHEEL_COOLDOWN = 650;
 const EDGE_RESISTANCE = 0.24;
 const SWIPE_EXIT_DURATION = 380;
 
@@ -36,7 +37,6 @@ export default function ProductScroll({
   onRetry,
 }) {
   const [cursor, setCursor] = useState(0);
-  const [activeId, setActiveId] = useState(null);
   const [drag, setDrag] = useState({ axis: "", x: 0, y: 0 });
   const [heartPulse, setHeartPulse] = useState(false);
   const [exitSwipe, setExitSwipe] = useState(null);
@@ -45,6 +45,7 @@ export default function ProductScroll({
   const [boundaryMessage, setBoundaryMessage] = useState("");
   const gesture = useRef(null);
   const wheelLock = useRef(false);
+  const wheelLockAt = useRef(0);
   const wheelX = useRef(0);
   const wheelXTimer = useRef(null);
   const wheelUnlockTimer = useRef(null);
@@ -55,8 +56,7 @@ export default function ProductScroll({
   const suppressCardClick = useRef(false);
   const viewportRef = useRef(null);
   const productCount = products.length;
-  const activeIndex = activeId === null ? -1 : products.findIndex(item => item.id === activeId);
-  const index = activeIndex >= 0 ? activeIndex : clamp(cursor, 0, Math.max(productCount - 1, 0));
+  const index = clamp(cursor, 0, Math.max(productCount - 1, 0));
   const product = products[index];
   const isLiked = product ? liked.includes(product.id) : false;
   useEffect(() => () => {
@@ -74,10 +74,6 @@ export default function ProductScroll({
     boundaryTimer.current = window.setTimeout(() => setBoundaryMessage(""), 1500);
   };
 
-  useEffect(() => {
-    if (product && activeId !== product.id) setActiveId(product.id);
-  }, [product, activeId]);
-
   const moveTo = (nextIndex) => {
     if (exitSwipe) setExitSwipe(null);
     const clamped = clamp(nextIndex, 0, productCount - 1);
@@ -86,7 +82,6 @@ export default function ProductScroll({
       return;
     }
     setCursor(clamped);
-    setActiveId(products[clamped].id);
     setDrag({ axis: "", x: 0, y: 0 });
   };
 
@@ -159,7 +154,7 @@ export default function ProductScroll({
   };
 
   const handlePointerDown = (event) => {
-    if (!product || exitSwipe || event.target.closest("button, a, [data-scroll-action]")) return;
+    if (event.button !== 0 || !product || exitSwipe || event.target.closest("button, a, [data-scroll-action]")) return;
     gesture.current = {
       x: event.clientX,
       y: event.clientY,
@@ -176,7 +171,8 @@ export default function ProductScroll({
     const x = event.clientX - start.x;
     const y = event.clientY - start.y;
     if (!start.axis && Math.max(Math.abs(x), Math.abs(y)) > AXIS_LOCK) {
-      start.axis = Math.abs(x) > Math.abs(y) ? "x" : "y";
+      if (Math.abs(x) > Math.abs(y) * 1.2) start.axis = "x";
+      else if (Math.abs(y) > Math.abs(x) * 1.2) start.axis = "y";
     }
     if (start.axis) setDrag({ axis: start.axis, x, y });
   };
@@ -187,21 +183,20 @@ export default function ProductScroll({
     if (!start) return;
     const x = event.clientX - start.x;
     const y = event.clientY - start.y;
-    const elapsed = Math.max(performance.now() - start.time, 1);
     const axis = start.axis || (Math.abs(x) > Math.abs(y) ? "x" : "y");
     if (Math.max(Math.abs(x), Math.abs(y)) > AXIS_LOCK) {
       suppressCardClick.current = true;
       window.clearTimeout(cardClickTimer.current);
       cardClickTimer.current = window.setTimeout(() => { suppressCardClick.current = false; }, 0);
     }
-    if (axis === "x" && (Math.abs(x) > HEART_DISTANCE || (Math.abs(x) > 38 && Math.abs(x) / elapsed > 0.62))) {
+    if (axis === "x" && Math.abs(x) > HEART_DISTANCE) {
       swipeHeart(x < 0 ? -1 : 1);
       return;
     }
     setDrag({ axis: "", x: 0, y: 0 });
 
-    const threshold = Math.max(54, (event.currentTarget.clientHeight || 600) * 0.14);
-    if (axis === "y" && (Math.abs(y) > threshold || (Math.abs(y) > 38 && Math.abs(y) / elapsed > 0.58))) {
+    const threshold = Math.max(64, (event.currentTarget.clientHeight || 600) * 0.1);
+    if (axis === "y" && Math.abs(y) > threshold) {
       if (y < 0) next();
       else previous();
     }
@@ -213,26 +208,35 @@ export default function ProductScroll({
   };
 
   const handleWheel = (event) => {
-    if (exitSwipe) return;
-    const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    if (exitSwipe || event.target.closest("button, a, input, textarea, select, [data-scroll-action]")) return;
+    const { deltaX, deltaY } = event;
+    const horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+    event.preventDefault();
     if (horizontal) {
-      wheelX.current += Math.abs(event.deltaX);
+      wheelX.current += Math.abs(deltaX);
       window.clearTimeout(wheelXTimer.current);
-      wheelXTimer.current = window.setTimeout(() => { wheelX.current = 0; }, 180);
-      if (!wheelLock.current && wheelX.current >= WHEEL_DISTANCE) {
-        wheelX.current = 0;
-        wheelLock.current = true;
-        swipeHeart(event.deltaX > 0 ? -1 : 1);
-        wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, 500);
+      wheelXTimer.current = window.setTimeout(() => { wheelX.current = 0; }, 200);
+      if (wheelX.current >= HORIZONTAL_WHEEL_DISTANCE) {
+        wheelX.current = -Infinity;
+        swipeHeart(deltaX > 0 ? -1 : 1);
       }
       return;
     }
-    if (wheelLock.current || Math.abs(event.deltaY) < 8) return;
+
+    if (wheelLock.current) {
+      if (performance.now() - wheelLockAt.current > 550) {
+        window.clearTimeout(wheelUnlockTimer.current);
+        wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, 160);
+      }
+      return;
+    }
+    if (Math.abs(deltaY) < 6) return;
     wheelLock.current = true;
-    if (event.deltaY > 0) next();
+    wheelLockAt.current = performance.now();
+    if (deltaY > 0) next();
     else previous();
     window.clearTimeout(wheelUnlockTimer.current);
-    wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, 620);
+    wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, WHEEL_COOLDOWN);
   };
 
   const handleKeyDown = (event) => {
@@ -371,9 +375,9 @@ export default function ProductScroll({
                       <Icon name="share" size={24} />
                       <span>Share</span>
                     </button>
-                    <button className={`${styles.action} ${savedItem ? styles.actionSaved : ""}`} type="button" aria-label={savedItem ? `Remove ${item.name} from saved` : `Save ${item.name}`} aria-pressed={savedItem} onClick={() => onSave(item)}>
+                    <button className={`${styles.action} ${savedItem ? styles.actionSaved : ""}`} type="button" aria-label={savedItem ? `Edit ${item.name} collections` : `Save ${item.name} to a collection`} aria-pressed={savedItem} onClick={() => onSave(item)}>
                       <Icon filled={savedItem} name="bookmark" size={23} />
-                      <span>Save</span>
+                      <span>{savedItem ? "Saved" : "Save"}</span>
                     </button>
                   </div>
                 </div>

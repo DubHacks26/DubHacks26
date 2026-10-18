@@ -70,7 +70,7 @@ export default function Discover({ products, product, nextProduct, profile, noMa
               {motion && <div className={`${styles.stamp} ${styles[motion]}`}><Icon name={motion === "like" ? "heart" : "x"} />{motion === "like" ? "Liked" : "Skipped"}</div>}
             </div>
             <div className={styles.copy}>
-              <div className={styles.brandRow}><span>{product.brand}</span><button type="button" disabled={Boolean(motion)} aria-label={`${isSaved ? "Unsave" : "Save"} ${product.name}`} aria-pressed={isSaved} className={isSaved ? styles.saved : ""} onClick={() => onSave(product)}><Icon filled={isSaved} name="bookmark" size={19} /></button></div>
+              <div className={styles.brandRow}><span>{product.brand}</span><button type="button" disabled={Boolean(motion)} aria-label={isSaved ? `Edit ${product.name} collections` : `Save ${product.name} to a collection`} aria-pressed={isSaved} className={isSaved ? styles.saved : ""} onClick={() => onSave(product)}><Icon filled={isSaved} name="bookmark" size={19} /></button></div>
               <h2>{product.name}</h2>
               <div className={styles.rating}><strong>${product.price}</strong><span><Icon filled name="star" size={14} />{product.rating} <small>({product.reviews.toLocaleString()})</small></span></div>
               <div className={styles.tags}>{productChips(product).map(tag => <span key={tag}>{tag}</span>)}</div>
@@ -84,7 +84,7 @@ export default function Discover({ products, product, nextProduct, profile, noMa
           <Button aria-label="Undo last feed action" disabled={!canUndo || Boolean(motion)} onClick={onUndo} variant="icon"><Icon name="rotate" size={18} /></Button>
           <Button aria-label="Skip product" disabled={Boolean(motion)} className={styles.nope} onClick={() => swipe("skip")} variant="icon"><Icon name="x" size={27} /></Button>
           <Button aria-label="Like product, show more like this" disabled={Boolean(motion)} className={styles.love} onClick={() => swipe("like")} variant="icon"><Icon filled name="heart" size={26} /></Button>
-          <Button aria-label={isSaved ? "Remove from wishlist" : "Save to wishlist"} aria-pressed={isSaved} disabled={Boolean(motion)} onClick={() => onSave(product)} variant="icon"><Icon filled={isSaved} name="bookmark" size={18} /></Button>
+          <Button aria-label={isSaved ? `Edit ${product.name} collections` : `Save ${product.name} to a collection`} aria-pressed={isSaved} disabled={Boolean(motion)} onClick={() => onSave(product)} variant="icon"><Icon filled={isSaved} name="bookmark" size={18} /></Button>
           <Button aria-label="Share product" disabled={Boolean(motion)} onClick={() => onShare(product)} variant="icon"><Icon name="share" size={18} /></Button>
         </div>
         <p className={styles.hint}><span>↑</span> Skip <span>↓</span> Back · Heart to like</p>

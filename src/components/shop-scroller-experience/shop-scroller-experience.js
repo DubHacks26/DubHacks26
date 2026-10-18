@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createProfile,
   recordAction,
   removeAction,
   restoreProfile,
+  likedCollectionId,
 } from "@/utils/feed.mjs";
 import {
   deleteProductAction,
@@ -19,12 +20,70 @@ import Landing from "@/components/landing/landing";
 import Onboarding from "@/components/onboarding/onboarding";
 import AppShell from "@/components/shop-scroller/shop-scroller";
 
+function syncLikedCollection(profile) {
+  if (!Array.isArray(profile.collections)) return profile;
+  return {
+    ...profile,
+    collections: [
+      { id: likedCollectionId, name: "Liked", productIds: profile.likes.map(String) },
+      ...profile.collections.filter(collection => collection.id !== likedCollectionId),
+    ],
+  };
+}
+
 export default function ShopScrollerExperience({ user, initialPage = "Discover" }) {
   const [stage, setStage] = useState("loading");
   const [profile, setProfile] = useState(createProfile);
   const [historyProducts, setHistoryProducts] = useState([]);
   const [loadError, setLoadError] = useState("");
   const storageKey = `shopscroller:profile:v1:${user.id}`;
+  const collectionsKey = `shopscroller:collections:v1:${user.id}`;
+
+  const withStoredCollections = useCallback((loadedProfile) => {
+    let customCollections = [];
+    try {
+      const stored = window.localStorage.getItem(collectionsKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+      if (Array.isArray(parsed)) {
+        const ids = new Set();
+        customCollections = parsed
+          .filter(collection => collection && typeof collection.id === "string"
+            && collection.id !== likedCollectionId
+            && typeof collection.name === "string"
+            && Array.isArray(collection.productIds))
+          .map(collection => ({
+            id: collection.id,
+            name: collection.name.trim(),
+            productIds: [...new Set(collection.productIds.map(String))],
+          }))
+          .filter(collection => collection.name && !ids.has(collection.id) && ids.add(collection.id));
+      }
+    } catch {
+      customCollections = [];
+    }
+
+    // Older saves were not assigned to collections. Keep them accessible in a
+    // regular collection so they can be organized from the new Save picker.
+    const assignedIds = new Set(customCollections.flatMap(collection => collection.productIds));
+    const unassignedSaved = loadedProfile.saved.filter(id => !assignedIds.has(String(id))).map(String);
+    if (unassignedSaved.length) {
+      const legacySaved = customCollections.find(collection => collection.id === "saved");
+      if (legacySaved) {
+        legacySaved.productIds = [...new Set([...legacySaved.productIds, ...unassignedSaved])];
+      } else {
+        customCollections.unshift({ id: "saved", name: "Saved", productIds: unassignedSaved });
+      }
+    }
+
+    return {
+      ...loadedProfile,
+      collections: [
+        { id: likedCollectionId, name: "Liked", productIds: loadedProfile.likes.map(String) },
+        ...customCollections,
+      ],
+      saved: [...new Set(customCollections.flatMap(collection => collection.productIds))],
+    };
+  }, [collectionsKey]);
 
   useEffect(() => {
     let active = true;
@@ -38,7 +97,7 @@ export default function ShopScrollerExperience({ user, initialPage = "Discover" 
               await migrateLegacyProfile(user.id, legacyProfile);
               const migrated = await loadFeedProfile(user.id);
               if (active) {
-                setProfile(migrated.profile);
+                setProfile(withStoredCollections(migrated.profile));
                 setHistoryProducts(migrated.historyProducts);
                 setStage(migrated.profile.onboarded ? "app" : "landing");
               }
@@ -47,7 +106,7 @@ export default function ShopScrollerExperience({ user, initialPage = "Discover" 
           }
         }
         if (!active) return;
-        setProfile(loadedProfile);
+        setProfile(withStoredCollections(loadedProfile));
         setHistoryProducts(loadedHistory);
         setStage(loadedProfile.onboarded ? "app" : "landing");
       })
@@ -59,7 +118,13 @@ export default function ShopScrollerExperience({ user, initialPage = "Discover" 
     return () => {
       active = false;
     };
-  }, [storageKey, user.id]);
+  }, [storageKey, user.id, withStoredCollections]);
+
+  useEffect(() => {
+    if (!profile.collections || stage === "loading" || stage === "error") return;
+    const customCollections = profile.collections.filter(collection => collection.id !== likedCollectionId);
+    window.localStorage.setItem(collectionsKey, JSON.stringify(customCollections));
+  }, [collectionsKey, profile.collections, stage]);
 
   async function finishOnboarding(preferences = profile.preferences) {
     await saveFeedPreferences(user.id, preferences, true);
@@ -78,13 +143,13 @@ export default function ShopScrollerExperience({ user, initialPage = "Discover" 
         embeddingError = error.message;
       }
     }
-    setProfile((current) => recordAction(current, asin, action, event));
+    setProfile((current) => syncLikedCollection(recordAction(current, asin, action, event)));
     return { ...event, embeddingApplied, embeddingError };
   }
 
   async function undoPersistedAction(eventId) {
     await deleteProductAction(user.id, eventId);
-    setProfile((current) => removeAction(current, eventId));
+    setProfile((current) => syncLikedCollection(removeAction(current, eventId)));
   }
 
   async function updatePreferences(preferences) {
