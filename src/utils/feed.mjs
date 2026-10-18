@@ -27,6 +27,10 @@ export const defaultPreferences = {
 
 export const likedCollectionId = "liked";
 
+const titleEmbeddingDimensions = 384;
+const titleSimilarityFloor = 0.2;
+const titleSimilarityCeiling = 0.7;
+
 const legacyCategories = ["Home", "Electronics", "Gaming", "Fashion", "Beauty", "Education"];
 
 const legacyCategoryAliases = {
@@ -60,13 +64,27 @@ const aliases = {
   functional: "practical",
 };
 
-const stopWords = new Set([
-  "about", "and", "are", "for", "from", "with", "the", "this", "that",
-  "your", "you", "new", "set", "pack", "piece", "pieces", "inch", "inches",
-  "size", "color", "style", "edition", "women", "womens", "men", "mens",
-  "machine", "machines", "maker", "makers", "dispenser", "dispensers",
-  "gadget", "gadgets", "accessory", "accessories", "product", "products",
-]);
+function parseEmbedding(value) {
+  let vector = value;
+  if (typeof vector === "string") {
+    try {
+      vector = JSON.parse(vector);
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(vector) || vector.length !== titleEmbeddingDimensions) return null;
+  const parsed = vector.map((value) =>
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : NaN,
+  );
+  if (!parsed.every(Number.isFinite)) return null;
+  const norm = Math.hypot(...parsed);
+  return norm >= 0.99 && norm <= 1.01 ? parsed : null;
+}
 
 const actionStrength = {
   like: 1,
@@ -182,6 +200,7 @@ export function normalizeProduct(raw = {}) {
       && raw.similarity !== "" && Number.isFinite(Number(raw.similarity))
       ? Number(raw.similarity)
       : null,
+    titleEmbedding: parseEmbedding(raw.title_embedding ?? raw.titleEmbedding),
   };
 }
 
@@ -358,36 +377,35 @@ function hashtagAffinity(product, profile, context) {
   return lexical * 0.7 + vector * 0.3;
 }
 
-function titleTokens(title) {
-  return new Set(
-    String(title || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .split(/\s+/)
-      .filter((token) => token.length > 2 && !stopWords.has(token)),
-  );
-}
-
 function titleSimilarity(a, b) {
-  if (!a.size || !b.size) return 0;
-  let intersection = 0;
-  for (const token of a) if (b.has(token)) intersection += 1;
-  return intersection / (a.size + b.size - intersection);
+  if (!a || !b) return null;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let index = 0; index < titleEmbeddingDimensions; index += 1) {
+    dot += a[index] * b[index];
+    normA += a[index] ** 2;
+    normB += b[index] ** 2;
+  }
+  if (!normA || !normB) return null;
+  const cosine = dot / Math.sqrt(normA * normB);
+  return Math.max(0, Math.min(
+    1,
+    (cosine - titleSimilarityFloor) / (titleSimilarityCeiling - titleSimilarityFloor),
+  ));
 }
 
 function titleAffinity(product, profile, context) {
-  const candidate = context.titleTokens.get(product.id);
-  if (!candidate?.size) return null;
+  if (!product.titleEmbedding) return null;
   let signedSimilarity = 0;
   let totalEvidence = 0;
   for (const event of profile.events) {
     const source = context.productById.get(event.productId);
-    if (!source || source.id === product.id) continue;
+    if (!source || !source.titleEmbedding || source.id === product.id) continue;
+    const similarity = titleSimilarity(product.titleEmbedding, source.titleEmbedding);
+    if (similarity === null) continue;
     const weight = evidenceFor(event, context.now);
-    signedSimilarity += weight * titleSimilarity(
-      candidate,
-      context.titleTokens.get(source.id) || new Set(),
-    );
+    signedSimilarity += weight * similarity;
     totalEvidence += Math.abs(weight);
   }
   if (!totalEvidence) return 0.5;
@@ -494,7 +512,6 @@ function popularityScore(product) {
 function buildContext(catalog, now) {
   return {
     productById: new Map(catalog.map((product) => [product.id, product])),
-    titleTokens: new Map(catalog.map((product) => [product.id, titleTokens(product.name)])),
     ratingPrior: meanRating(catalog),
     now,
   };
@@ -543,13 +560,16 @@ export function explainProduct(product, profile, catalog) {
     .find((item) =>
       (product.subcategory && item.subcategory === product.subcategory)
       || product.hashtags?.some((tag) => item.hashtags?.includes(tag))
-      || [...titleTokens(product.name)].some((token) => titleTokens(item.name).has(token)),
+      || (titleSimilarity(product.titleEmbedding, item.titleEmbedding) ?? 0) >= 0.6,
     );
   if (liked && product.subcategory && liked.subcategory === product.subcategory) {
     return `Because you liked another ${product.subcategory.toLowerCase()} item.`;
   }
   const sharedTag = liked && product.hashtags?.find((tag) => liked.hashtags?.includes(tag));
   if (sharedTag) return `Because you liked another item tagged ${sharedTag.replaceAll("-", " ")}.`;
+  if (liked && (titleSimilarity(product.titleEmbedding, liked.titleEmbedding) ?? 0) >= 0.6) {
+    return "Because its title has a similar meaning to a product you liked.";
+  }
   if (profile.preferences.categories.some(
     (category) => categoryMatches(category, product.mainCategory || product.category),
   )) {

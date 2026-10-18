@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/utils/supabaseClient";
 import { restoreProfile } from "@/utils/feed.mjs";
+import { getProductsByAsins } from "@/api/UserAPI";
 
 async function fetchAll(query, pageSize = 500) {
   const rows = [];
@@ -32,12 +33,7 @@ export async function loadFeedProfile(userId) {
   const historyAsins = [...new Set(events.map((event) => event.asin))];
   const historyProducts = [];
   for (let from = 0; from < historyAsins.length; from += 100) {
-    const { data, error } = await supabase
-      .from("catalog_products")
-      .select("asin,title,brand,summary,image_url,product_url,price_cents,rating,review_count,availability,hashtags,main_category,subcategory,bought_in_past_month")
-      .in("asin", historyAsins.slice(from, from + 100));
-    if (error) throw new Error(error.message);
-    historyProducts.push(...(data || []));
+    historyProducts.push(...await getProductsByAsins(historyAsins.slice(from, from + 100)));
   }
 
   const profile = restoreProfile({
