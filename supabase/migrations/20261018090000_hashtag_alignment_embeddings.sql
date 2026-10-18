@@ -1,5 +1,5 @@
 create or replace function public.get_hashtag_embeddings(p_node_ids uuid[])
-returns table (id uuid, embedding vector(384))
+returns table (id uuid, embedding extensions.vector(384))
 language sql stable security definer
 set search_path = pg_catalog, public, extensions as $$
   select h.id, h.embedding
