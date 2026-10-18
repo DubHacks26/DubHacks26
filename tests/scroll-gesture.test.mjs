@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { advanceWheelGesture, createWheelGesture, forwardScrollDeparture, scrollPageIndex, scrollPageTop, updateNativeScrollGesture, limitNativeScrollTop, shouldCancelMouseDrag } from "../src/utils/scroll-gesture.mjs";
+import { advanceWheelGesture, createWheelGesture, finishWheelGesture, forwardScrollDeparture, scrollPageIndex, scrollPageTop, updateNativeScrollGesture, limitNativeScrollTop, shouldCancelMouseDrag, shouldFinishWheelGesture } from "../src/utils/scroll-gesture.mjs";
 
 test("native scroll follows the nearest page and clamps overscroll at both ends", () => {
   assert.equal(scrollPageIndex(299, 600, 20), 0);
@@ -72,19 +72,27 @@ test("a quick direction change after a page transition navigates back", () => {
 
 test("small deltas accumulate and line-based wheels normalize to pixels", () => {
   const wheel = session();
-  assert.equal(wheel(5, 0), null);
-  assert.equal(wheel(5, 16), null);
-  assert.equal(wheel(5, 32), null);
-  assert.deepEqual(wheel(5, 48), { axis: "y", direction: 1 });
-  assert.deepEqual(session()(1, 0, { deltaMode: 1 }), { axis: "y", direction: 1 });
+  for (const at of [0, 16, 32, 48]) assert.equal(wheel(5, at), null);
+  assert.deepEqual(wheel(5, 64), { axis: "y", direction: 1 });
+  const lineWheel = session();
+  assert.equal(lineWheel(1, 0, { deltaMode: 1 }), null);
+  assert.deepEqual(lineWheel(1, 16, { deltaMode: 1 }), { axis: "y", direction: 1 });
 });
 
 test("horizontal gestures require intentional distance and like only once", () => {
-  const wheel = session();
-  assert.equal(wheel(0, 0, { deltaX: 70 }), null);
-  assert.equal(wheel(0, 16, { deltaX: 70 }), null);
-  assert.deepEqual(wheel(0, 32, { deltaX: 70 }), { axis: "x", direction: 1 });
-  assert.equal(wheel(0, 48, { deltaX: 65 }), null);
+  let state = createWheelGesture();
+  for (const [now, deltaX] of [[0, 70], [16, 70], [32, 70]]) {
+    const result = advanceWheelGesture(state, { deltaX, now });
+    state = result.state;
+    assert.equal(result.action, null);
+  }
+  assert.deepEqual(finishWheelGesture(state), { axis: "x", direction: 1 });
+  assert.equal(finishWheelGesture({ ...state, distance: 179 }), null);
+  assert.equal(shouldFinishWheelGesture(state), false);
+  for (const [now, deltaX] of [[48, 40], [64, 20]]) {
+    state = advanceWheelGesture(state, { deltaX, now }).state;
+  }
+  assert.equal(shouldFinishWheelGesture(state), true);
 });
 
 test("one large desktop flick is capped at four products in either direction", () => {

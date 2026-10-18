@@ -7,16 +7,18 @@ import {
   reorderRemainingScrollQueue,
   refreshScrollQueue,
 } from "@/utils/scroll-queue.mjs";
-import { advanceWheelGesture, createWheelGesture, forwardScrollDeparture, scrollPageIndex, scrollPageTop, updateNativeScrollGesture, limitNativeScrollTop, shouldCancelMouseDrag } from "@/utils/scroll-gesture.mjs";
+import { advanceWheelGesture, applyVerticalScrollFriction, createWheelGesture, finishWheelGesture, forwardScrollDeparture, scrollPageIndex, scrollPageTop, updateNativeScrollGesture, limitNativeScrollTop, shouldCancelMouseDrag, shouldFinishWheelGesture } from "@/utils/scroll-gesture.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import styles from "./product-scroll.module.css";
 
-const AXIS_LOCK = 12;
-const HEART_DISTANCE = 90;
+const AXIS_LOCK = 32;
+const HEART_DISTANCE = 80;
 const EDGE_RESISTANCE = 0.24;
-const SWIPE_EXIT_DURATION = 220;
+const SWIPE_EXIT_DURATION = 240;
+const WHEEL_GESTURE_END_MS = 60;
+const HORIZONTAL_WHEEL_LOCK_MS = 120;
 const DESKTOP_POINTER_QUERY = "(hover: hover) and (pointer: fine)";
 
 function subscribeDesktopPointer(listener) {
@@ -35,6 +37,12 @@ function serverPointerSnapshot() {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function resistHorizontalDrag(distance) {
+  const magnitude = Math.abs(distance);
+  const resisted = magnitude <= 60 ? magnitude * 0.4 : 24 + (magnitude - 60) * 0.16;
+  return Math.sign(distance) * resisted;
 }
 
 export default function ProductScroll({
@@ -61,14 +69,15 @@ export default function ProductScroll({
   const [drag, setDrag] = useState({ axis: "", x: 0, y: 0 });
   const [heartPulse, setHeartPulse] = useState(false);
   const [exitSwipe, setExitSwipe] = useState(null);
-  const [imageRatios, setImageRatios] = useState({});
-  const [hoveredCard, setHoveredCard] = useState(null);
   const [wheelSourceSlot, setWheelSourceSlot] = useState(null);
   const wheelSourceRef = useRef(null);
   const wheelSourceTimer = useRef(null);
   const [boundaryMessage, setBoundaryMessage] = useState("");
   const gesture = useRef(null);
   const wheelGesture = useRef(createWheelGesture());
+  const horizontalWheelTimer = useRef(null);
+  const wheelGestureLockTimer = useRef(null);
+  const horizontalWheelCommitted = useRef(false);
   const heartTimer = useRef(null);
   const boundaryTimer = useRef(null);
   const exitTimer = useRef(null);
@@ -127,6 +136,8 @@ export default function ProductScroll({
     window.clearTimeout(exitTimer.current);
     window.clearTimeout(cardClickTimer.current);
     window.clearTimeout(wheelSourceTimer.current);
+    window.clearTimeout(horizontalWheelTimer.current);
+    window.clearTimeout(wheelGestureLockTimer.current);
   }, []);
 
   useEffect(() => {
@@ -210,10 +221,13 @@ export default function ProductScroll({
 
   const moveTo = (nextIndex, { instant = false } = {}) => {
     const current = session.current;
+    window.clearTimeout(horizontalWheelTimer.current);
+    wheelGesture.current = createWheelGesture();
     window.clearTimeout(exitTimer.current);
     current.exiting = null;
     setExitSwipe(null);
     const clamped = clamp(nextIndex, 0, Math.max(0, current.products.length - 1));
+    setDrag({ axis: "", x: 0, y: 0 });
     if (nativeDesktop && nativeScrollRef.current) {
       nativeWheelGesture.current = null;
       nativeTarget.current = clamped;
@@ -221,7 +235,6 @@ export default function ProductScroll({
         top: scrollPageTop(clamped, nativePageHeight.current, current.products.length),
         behavior: instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
       });
-      setDrag({ axis: "", x: 0, y: 0 });
       if (nextIndex < 0 || nextIndex >= current.products.length) {
         showBoundary(nextIndex < 0 ? "You’re at the first find" : "You’re at the end of this scroll");
       }
@@ -237,7 +250,6 @@ export default function ProductScroll({
     visitedThrough.current = Math.max(visitedThrough.current, clamped);
     setHeartPulse(false);
     window.clearTimeout(heartTimer.current);
-    setDrag({ axis: "", x: 0, y: 0 });
   };
 
   const previous = () => moveTo((nativeDesktop ? nativeTarget.current ?? session.current.index : session.current.index) - 1);
@@ -288,48 +300,18 @@ export default function ProductScroll({
     }, SWIPE_EXIT_DURATION);
   };
 
-  const rememberImageRatio = (id, event) => {
+  const decodeImage = (event) => {
     const image = event.currentTarget;
-    const { naturalWidth, naturalHeight } = image;
-    if (!naturalWidth || !naturalHeight) return;
-    const ratio = naturalWidth / naturalHeight;
-    setImageRatios((ratios) => ratios[id] === ratio ? ratios : { ...ratios, [id]: ratio });
     // The next two cards load eagerly and decode offscreen; navigation never
     // waits for an image request or decode promise to complete.
     image.decode?.().catch(() => {});
   };
 
-  const toggleCardMorph = (id, event) => {
-    if (!event.currentTarget || event.target.closest("button, a, [data-scroll-action]")) return;
-    if (suppressCardClick.current) return;
-    if (hoveredCard?.id === id) {
-      setHoveredCard({ ...hoveredCard, active: !hoveredCard.active });
-      return;
-    }
-
-    const frame = event.currentTarget;
-    const bounds = frame.getBoundingClientRect();
-    const viewportBounds = viewportRef.current?.getBoundingClientRect();
-    if (!viewportBounds) return;
-    const isMobile = window.matchMedia("(max-width: 820px)").matches;
-    const ratio = imageRatios[id];
-    if (!ratio) return;
-
-    const edgePadding = isMobile ? 12 : 24;
-    const maxWidth = Math.max(1, viewportBounds.width - edgePadding * 2 - (isMobile ? 0 : 112));
-    const maxHeight = Math.max(1, viewportBounds.height - edgePadding * 2);
-    const height = Math.min(maxHeight, maxWidth / ratio);
-    const width = height * ratio;
-    setHoveredCard({ id, width, height, baseWidth: bounds.width, baseHeight: bounds.height, active: true });
-  };
-
-  const finishCardMorph = (id, event) => {
-    if (event.target !== event.currentTarget || !["width", "height"].includes(event.propertyName)) return;
-    setHoveredCard((current) => current?.id === id && !current.active ? null : current);
-  };
-
   const handlePointerDown = (event) => {
     if (event.button !== 0 || !product || event.target.closest("button, a, [data-scroll-action]")) return;
+    window.clearTimeout(horizontalWheelTimer.current);
+    wheelGesture.current = createWheelGesture();
+    setDrag({ axis: "", x: 0, y: 0 });
     gesture.current = {
       x: event.clientX,
       y: event.clientY,
@@ -438,6 +420,9 @@ export default function ProductScroll({
     cancelPointer();
     nativeWheelGesture.current = null;
     wheelGesture.current = createWheelGesture();
+    window.clearTimeout(horizontalWheelTimer.current);
+    window.clearTimeout(wheelGestureLockTimer.current);
+    horizontalWheelCommitted.current = false;
     window.clearTimeout(wheelSourceTimer.current);
     wheelSourceRef.current = null;
     setWheelSourceSlot(null);
@@ -449,8 +434,32 @@ export default function ProductScroll({
     return () => window.removeEventListener("blur", reset);
   }, []);
 
+  const finishHorizontalWheel = useEffectEvent(() => {
+    const action = finishWheelGesture(wheelGesture.current);
+    wheelGesture.current = createWheelGesture();
+    setDrag({ axis: "", x: 0, y: 0 });
+    if (action) {
+      horizontalWheelCommitted.current = true;
+      window.clearTimeout(wheelGestureLockTimer.current);
+      wheelGestureLockTimer.current = window.setTimeout(() => {
+        horizontalWheelCommitted.current = false;
+        wheelGesture.current = createWheelGesture();
+      }, HORIZONTAL_WHEEL_LOCK_MS);
+      swipeHeart(-action.direction);
+    }
+  });
+
   const handleWheel = useEffectEvent((event) => {
     if (event.ctrlKey || event.target.closest("input, textarea, select, [contenteditable='true'], [data-scroll-native]")) return;
+    if (horizontalWheelCommitted.current) {
+      if (event.cancelable) event.preventDefault();
+      window.clearTimeout(wheelGestureLockTimer.current);
+      wheelGestureLockTimer.current = window.setTimeout(() => {
+        horizontalWheelCommitted.current = false;
+        wheelGesture.current = createWheelGesture();
+      }, HORIZONTAL_WHEEL_LOCK_MS);
+      return;
+    }
     if (nativeDesktop && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
       // Keep native momentum inside a four-product range for this gesture.
       // A new flick after an idle gap starts a fresh range from the current card.
@@ -470,12 +479,13 @@ export default function ProductScroll({
         setWheelSourceSlot(null);
       }, 200);
       const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? surface.clientHeight : 1;
+      const deltaY = applyVerticalScrollFriction(event.deltaY * scale);
       nativeWheelGesture.current = updateNativeScrollGesture(nativeWheelGesture.current, {
         now: performance.now(), scrollTop: surface.scrollTop,
         pageHeight: nativePageHeight.current, productCount: session.current.products.length,
-        deltaY: event.deltaY * scale,
+        deltaY,
       });
-      const proposedTop = surface.scrollTop + event.deltaY * scale;
+      const proposedTop = surface.scrollTop + deltaY;
       const limitedTop = limitNativeScrollTop(proposedTop, nativeWheelGesture.current, nativePageHeight.current, session.current.products.length);
       if (Math.abs(proposedTop - limitedTop) > 0.5) {
         if (event.cancelable) event.preventDefault();
@@ -485,6 +495,7 @@ export default function ProductScroll({
       return;
     }
     if (event.cancelable) event.preventDefault();
+    const previousWheelAxis = wheelGesture.current.axis;
     const result = advanceWheelGesture(wheelGesture.current, {
       deltaX: event.deltaX,
       deltaY: event.deltaY,
@@ -493,8 +504,18 @@ export default function ProductScroll({
       pageHeight: viewportRef.current?.clientHeight || 600,
     });
     wheelGesture.current = result.state;
-    if (result.action?.axis === "x") swipeHeart(-result.action.direction);
-    else if (result.action?.direction > 0) next();
+    window.clearTimeout(horizontalWheelTimer.current);
+    if (result.state.axis === "x") {
+      setDrag({ axis: "x", x: -result.state.distance, y: 0 });
+      if (shouldFinishWheelGesture(result.state)) {
+        finishHorizontalWheel();
+        return;
+      }
+      horizontalWheelTimer.current = window.setTimeout(finishHorizontalWheel, WHEEL_GESTURE_END_MS);
+      return;
+    }
+    if (previousWheelAxis === "x") setDrag({ axis: "", x: 0, y: 0 });
+    if (result.action?.direction > 0) next();
     else if (result.action) previous();
   });
 
@@ -610,42 +631,33 @@ export default function ProductScroll({
             }
             const selected = itemIndex === index;
             const exiting = exitSwipe?.id === item.id;
-            const cardMorph = hoveredCard?.id === item.id ? hoveredCard : null;
             const reviewCount = Number.isInteger(item.reviews) && item.reviews > 0 ? item.reviews : 0;
             const rating = Number.isFinite(item.rating) ? item.rating.toFixed(1) : null;
             const priceLabel = formatProductPrice(item.price);
             const likedItem = liked.includes(item.id);
             const savedItem = saved.includes(item.id);
-            const horizontalOffset = selected && drag.axis === "x" ? drag.x * 0.62 : 0;
-            const rotation = selected && drag.axis === "x" ? drag.x / 45 : 0;
+            const horizontalOffset = selected && drag.axis === "x" ? resistHorizontalDrag(drag.x) : 0;
+            const rotation = selected && drag.axis === "x" ? horizontalOffset / 80 : 0;
             const badgeProgress = selected && drag.axis === "x" ? clamp(Math.abs(drag.x) / HEART_DISTANCE, 0, 1) : 0;
 
             return (
               <div aria-hidden={!selected} className={`${styles.reel} ${nativeDesktop ? styles.nativeReel : ""}`} inert={!nativeDesktop && !selected} data-scroll-slot={itemIndex} key={nativeDesktop ? itemIndex : item.id} style={nativeDesktop ? undefined : { top: `${itemIndex * 100}%` }}>
-                <div
-                  className={styles.frame}
-                  onClick={(event) => selected && toggleCardMorph(item.id, event)}
-                  onTransitionEnd={(event) => finishCardMorph(item.id, event)}
-                  style={cardMorph ? {
-                    width: `${cardMorph.active ? cardMorph.width : cardMorph.baseWidth}px`,
-                    height: `${cardMorph.active ? cardMorph.height : cardMorph.baseHeight}px`,
-                  } : undefined}
-                >
+                <div className={styles.frame}>
 
                   <article
                     aria-label={`${item.name}, ${priceLabel}`}
-                    className={`${styles.card} ${cardMorph?.active ? styles.cardExpanded : ""} ${selected && drag.axis === "x" && !exiting ? styles.cardDragging : ""} ${exiting ? styles.cardExiting : ""} ${selected && heartPulse ? styles.cardPop : ""}`}
+                    className={`${styles.card} ${selected && drag.axis === "x" && !exiting ? styles.cardDragging : ""} ${exiting ? styles.cardExiting : ""} ${selected && heartPulse ? styles.cardPop : ""}`}
                     onDoubleClick={(event) => {
                       if (selected && !event.target.closest("button, a")) heart(true);
                     }}
                     style={{
                       transform: exiting
-                        ? `translate3d(calc(${exitSwipe.direction * 100}vw + ${exitSwipe.direction * 120}px), 0, 0) rotate(${exitSwipe.direction * 16}deg)`
+                        ? `translate3d(${exitSwipe.direction * 100}%, 0, 0)`
                         : selected && drag.axis === "x" ? `translate3d(${horizontalOffset}px, 0, 0) rotate(${rotation}deg)` : "",
                       opacity: exiting ? 0 : 1,
                     }}
                   >
-                    <ProductImage alt={item.name} className={styles.image} decoding="async" fetchPriority={selected ? "high" : itemIndex === index + 1 ? "auto" : "low"} loading="eager" onLoad={(event) => rememberImageRatio(item.id, event)} src={item.image} />
+                    <ProductImage alt={item.name} className={styles.image} decoding="async" fetchPriority={selected ? "high" : itemIndex === index + 1 ? "auto" : "low"} loading="eager" onLoad={decodeImage} src={item.image} />
                     <div className={styles.scrim} />
                     <div className={styles.top}>
                       {/* <span className={styles.chip}>{item.category}</span>

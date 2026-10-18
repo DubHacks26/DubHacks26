@@ -1,5 +1,10 @@
 const IDLE_MS = 120;
 const MIN_PAGE_INTERVAL_MS = 240;
+export const VERTICAL_SCROLL_FRICTION = 0.72;
+
+export function applyVerticalScrollFriction(delta) {
+  return delta * VERTICAL_SCROLL_FRICTION;
+}
 
 export function scrollPageIndex(scrollTop, pageHeight, productCount) {
   if (!(pageHeight > 0) || !(productCount > 0) || !Number.isFinite(scrollTop)) return 0;
@@ -18,6 +23,7 @@ export function forwardScrollDeparture(products, previousIndex, nextIndex, repor
 
 export const MAX_SCROLL_PRODUCTS = 4;
 const NATIVE_GESTURE_IDLE_MS = 180;
+const HORIZONTAL_WHEEL_THRESHOLD = 180;
 
 // Keep the original anchor through the whole flick and its momentum. Reopening
 // the range for every wheel tick would allow one gesture to run through the feed.
@@ -58,14 +64,25 @@ export function limitNativeScrollTop(scrollTop, gesture, pageHeight, productCoun
 }
 
 export function createWheelGesture() {
-  return { axis: "", distance: 0, consumed: false, lastAt: -Infinity, lastDelta: 0, acceptedAt: -Infinity };
+  return { axis: "", distance: 0, consumed: false, lastAt: -Infinity, lastDelta: 0, peakDelta: 0, decayCount: 0, acceptedAt: -Infinity };
+}
+
+export function finishWheelGesture(gesture) {
+  if (gesture?.axis !== "x" || Math.abs(gesture.distance) < HORIZONTAL_WHEEL_THRESHOLD) return null;
+  return { axis: "x", direction: Math.sign(gesture.distance) };
+}
+
+export function shouldFinishWheelGesture(gesture) {
+  return gesture?.axis === "x"
+    && gesture.decayCount >= 2
+    && Math.abs(gesture.distance) >= HORIZONTAL_WHEEL_THRESHOLD;
 }
 
 /** One page per wheel gesture, without letting a long inertial tail lock out a fresh flick. */
 export function advanceWheelGesture(previous, { deltaX = 0, deltaY = 0, deltaMode = 0, now, pageHeight = 600 }) {
   const scale = deltaMode === 1 ? 16 : deltaMode === 2 ? pageHeight : 1;
   const x = deltaX * scale;
-  const y = deltaY * scale;
+  const y = applyVerticalScrollFriction(deltaY * scale);
   const axis = Math.abs(x) > Math.abs(y) ? "x" : "y";
   const delta = axis === "x" ? x : y;
   if (!Number.isFinite(delta) || !delta) return { state: previous, action: null };
@@ -85,15 +102,19 @@ export function advanceWheelGesture(previous, { deltaX = 0, deltaY = 0, deltaMod
       || (reversed && magnitude >= 12)
     ));
   const reset = previous.axis !== axis || freshGesture;
+  const peakDelta = reset ? magnitude : Math.max(previous.peakDelta ?? 0, magnitude);
   const state = {
     axis,
     distance: (reset ? 0 : previous.distance) + delta,
     consumed: reset ? false : previous.consumed,
     lastAt: now,
     lastDelta: delta,
+    peakDelta,
+    decayCount: reset ? 0 : magnitude <= peakDelta * 0.65 ? (previous.decayCount ?? 0) + 1 : 0,
     acceptedAt: previous.acceptedAt,
   };
-  const threshold = axis === "x" ? 180 : 16;
+  const threshold = axis === "x" ? HORIZONTAL_WHEEL_THRESHOLD : 16;
+  if (axis === "x") return { state, action: null };
   if (state.consumed || elapsed < MIN_PAGE_INTERVAL_MS || Math.abs(state.distance) < threshold) {
     return { state, action: null };
   }
