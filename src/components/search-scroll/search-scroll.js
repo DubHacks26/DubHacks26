@@ -20,6 +20,8 @@ function SearchScrollContent({
   onShare,
   profile,
   saved,
+  cartTotal,
+  budgetLimit,
 }) {
   const router = useRouter();
   const [result, setResult] = useState(null);
@@ -127,6 +129,8 @@ function SearchScrollContent({
     <ProductScroll
       key={query}
       error=""
+      budgetLimit={budgetLimit}
+      cartTotal={cartTotal}
       liked={profile.likes}
       onDetails={onDetails}
       onExitSearch={goToRegularScroll}

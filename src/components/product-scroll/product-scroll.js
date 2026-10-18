@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { productChips } from "@/utils/feed.mjs";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
 import {
@@ -58,6 +59,8 @@ export default function ProductScroll({
   reorderUnseen = false,
   searchQuery = "",
   onExitSearch,
+  cartTotal = 0,
+  budgetLimit = 400,
 }) {
   const [queue, setQueue] = useState(() => incomingProducts);
   const [cursor, setCursor] = useState(0);
@@ -377,6 +380,16 @@ export default function ProductScroll({
           <Button onClick={onExitSearch} variant="secondary">Back to your feed</Button>
         </div>
       )}
+      <Link className={`${styles.budgetBar} ${searchQuery ? styles.searchBudgetBar : ""}`} href="/budget">
+        <span>In cart <strong>{formatProductPrice(cartTotal)}</strong></span>
+        <span>Budget <strong>{formatProductPrice(budgetLimit)}</strong></span>
+        <span className={styles.budgetRemaining}>
+          {formatProductPrice(Math.max(budgetLimit - cartTotal, 0))} left
+        </span>
+        <i aria-hidden="true">
+          <b style={{ width: `${Math.min((cartTotal / budgetLimit) * 100, 100)}%` }} />
+        </i>
+      </Link>
       <div
         aria-label="Product feed. Swipe or scroll vertically for the next item. Swipe sideways or press H to heart."
         className={`${styles.viewport} ${drag.axis ? styles.dragging : ""}`}

@@ -8,7 +8,7 @@ import { getCatalogProducts, getRecommendations } from "@/api/UserAPI";
 import { navItems } from "@/utils/shopScrollerData";
 import { getFeed, matches, defaultPreferences, likedCollectionId } from "@/utils/feed.mjs";
 import { normalizeCatalogProduct } from "@/utils/catalogProduct.mjs";
-import { restoreCart, toCartItem } from "@/utils/cart.mjs";
+import { cartTotal, restoreCart, toCartItem } from "@/utils/cart.mjs";
 import Discover from "@/components/discover/discover";
 import ProductScroll from "@/components/product-scroll/product-scroll";
 import Brand from "@/components/brand/brand";
@@ -175,8 +175,10 @@ export default function AppShell({
   const [toast, setToast] = useState("");
   const [cart, setCart] = useState([]);
   const [cartLoaded, setCartLoaded] = useState(false);
+  const [budgetLimit, setBudgetLimit] = useState(400);
   const cartStorageKey = `shopscroller:cart:v1:${user.id}`;
   const cartIds = cart.map(item => item.id);
+  const currentCartTotal = cartTotal(cart);
   const handleSearchLearned = useCallback(() => {
     setRecommendationReload(current => current + 1);
   }, []);
@@ -494,6 +496,8 @@ export default function AppShell({
     content = (
       <Suspense fallback={<p role="status">Loading your search scroll…</p>}>
         <SearchScroll
+          budgetLimit={budgetLimit}
+          cartTotal={currentCartTotal}
           historyProducts={historyProducts}
           onDetails={(product, type) => setDrawer({ product, type })}
           onHeart={heartFromScroll}
@@ -508,6 +512,8 @@ export default function AppShell({
   else if (page === "Scroll")
     content = (
       <ProductScroll
+        budgetLimit={budgetLimit}
+        cartTotal={currentCartTotal}
         onDetails={(product, type) => setDrawer({ product, type })}
         onHeart={heartFromScroll}
         onSkip={(product, context) => persistAction(product, "skip", null, undefined, context)}
@@ -553,7 +559,16 @@ export default function AppShell({
       />
     );
   else if (page === "Budget")
-    content = <Budget catalogProducts={products} onRemove={removeFromAllCollections} saved={saved} />;
+    content = (
+      <Budget
+        catalogProducts={products}
+        items={cart}
+        limit={budgetLimit}
+        loading={!cartLoaded}
+        onLimitChange={setBudgetLimit}
+        onRemove={removeFromCart}
+      />
+    );
   else if (page === "Search")
     content = (
       <Suspense fallback={<p role="status">Loading search…</p>}>

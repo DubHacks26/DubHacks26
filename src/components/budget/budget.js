@@ -1,28 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { products as demoProducts } from "@/utils/shopScrollerData";
 import { formatProductPrice } from "@/utils/catalogProduct.mjs";
+import { cartTotal } from "@/utils/cart.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import PageHeader from "@/components/page-header/page-header";
 import styles from "./budget.module.css";
 
-export default function Budget({ saved, onRemove, catalogProducts = [] }) {
-  const [limit, setLimit] = useState(400);
+export default function Budget({
+  items = [],
+  loading = false,
+  onRemove,
+  catalogProducts = [],
+  limit = 400,
+  onLimitChange,
+}) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("400");
-  const selected = [...demoProducts, ...catalogProducts].filter((product) => saved.includes(product.id));
-  const total = selected.reduce((sum, product) => sum + (Number.isFinite(product.price) ? product.price : 0), 0);
-  const categoryBreakdown = [...new Set(selected.map(p => p.category))].map(category => [category, total ? Math.round(selected.filter(p => p.category === category).reduce((sum, p) => sum + (Number.isFinite(p.price) ? p.price : 0), 0) / total * 100) : 0]);
+  const [draft, setDraft] = useState(String(limit));
+  const total = cartTotal(items);
+  const categoryById = new Map(catalogProducts.map(product => [String(product.asin || product.id), product.category || "Other"]));
+  const categoryBreakdown = [...new Set(items.map(item => categoryById.get(item.id) || "Other"))]
+    .map(category => [
+      category,
+      total
+        ? Math.round(items
+          .filter(item => (categoryById.get(item.id) || "Other") === category)
+          .reduce((sum, item) => sum + item.price, 0) / total * 100)
+        : 0,
+    ]);
   const percentage = Math.round((total / limit) * 100);
 
   const updateLimit = (event) => {
     event.preventDefault();
     const amount = Number(draft);
     if (amount > 0) {
-      setLimit(amount);
+      onLimitChange(amount);
       setEditing(false);
     }
   };
@@ -30,13 +44,13 @@ export default function Budget({ saved, onRemove, catalogProducts = [] }) {
   return (
     <section className="shop-page">
       <PageHeader
-        description="A friendly snapshot of hypothetical spending. No real money involved."
+        description="Track the listed-price total of products you have added to your cart."
         eyebrow="Spend with intention"
-        title="Your wishlist, your budget."
+        title="Your cart, your budget."
       />
       <div className={styles.hero}>
         <div>
-          <p>Wishlist value</p>
+          <p>Cart value</p>
           <strong>{formatProductPrice(total)}</strong>
           <span>of {formatProductPrice(limit)} comfort budget</span>
         </div>
@@ -51,7 +65,10 @@ export default function Budget({ saved, onRemove, catalogProducts = [] }) {
         <div className={styles.remaining}>
           <p>Remaining</p>
             <strong>{formatProductPrice(Math.max(limit - total, 0))}</strong>
-          <Button onClick={() => setEditing(true)} variant="secondary">
+          <Button onClick={() => {
+            setDraft(String(limit));
+            setEditing(true);
+          }} variant="secondary">
             Adjust budget
           </Button>
         </div>
@@ -78,38 +95,42 @@ export default function Budget({ saved, onRemove, catalogProducts = [] }) {
         <div className={styles.warning}>
           <Icon name="wallet" />
           <p>
-            <strong>Your wishlist is {formatProductPrice(total - limit)} over budget.</strong>
-            <span>Try removing an item or adjusting your comfort budget.</span>
+            <strong>Your cart is {formatProductPrice(total - limit)} over budget.</strong>
+            <span>Try removing an item from your cart or adjusting your comfort budget.</span>
           </p>
         </div>
       )}
       <div className={styles.columns}>
         <div className="shop-panel">
           <h2>By category</h2>
-          {categoryBreakdown.map(([category, share]) => (
-            <div className={styles.breakdown} key={category}>
-              <span>{category}</span>
-              <i>
-                <b style={{ width: `${share}%` }} />
-              </i>
-              <strong>{share}%</strong>
-            </div>
-          ))}
+          {loading ? <p role="status">Loading your cart…</p> : categoryBreakdown.length ? (
+            categoryBreakdown.map(([category, share]) => (
+              <div className={styles.breakdown} key={category}>
+                <span>{category}</span>
+                <i>
+                  <b style={{ width: `${share}%` }} />
+                </i>
+                <strong>{share}%</strong>
+              </div>
+            ))
+          ) : <p>No cart items to break down yet.</p>}
         </div>
         <div className="shop-panel">
-          <h2>Items in your wishlist</h2>
-          {selected.length ? (
-            selected.map((product) => (
-              <div className={styles.product} key={product.id}>
-                <ProductImage alt="" src={product.image} />
+          <h2>Items in your cart</h2>
+          {loading ? (
+            <p role="status">Loading your cart…</p>
+          ) : items.length ? (
+            items.map((item) => (
+              <div className={styles.product} key={item.id}>
+                <ProductImage alt="" src={item.image} />
                 <p>
-                  <strong>{product.name}</strong>
-                  <span>{product.brand}</span>
+                  <strong>{item.name}</strong>
+                  <span>{item.brand}</span>
                 </p>
-                <b>{formatProductPrice(product.price)}</b>
+                <b>{formatProductPrice(item.price)}</b>
                 <Button
-                  aria-label={`Remove ${product.name}`}
-                  onClick={() => onRemove(product)}
+                  aria-label={`Remove ${item.name}`}
+                  onClick={() => onRemove(item.id)}
                   variant="icon"
                 >
                   <Icon name="x" size={15} />
@@ -118,8 +139,8 @@ export default function Budget({ saved, onRemove, catalogProducts = [] }) {
             ))
           ) : (
             <div className="shop-empty">
-              <Icon name="bookmark" />
-              <p>Save a few products to see them here.</p>
+              <Icon name="bag" />
+              <p>Add products to your cart to see them here.</p>
             </div>
           )}
         </div>

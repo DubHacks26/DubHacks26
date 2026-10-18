@@ -10,7 +10,7 @@
 
 .viewport {
   position: absolute;
-  inset: 0;
+  inset: 46px 0 0;
   overflow: hidden;
   outline: 0;
   overscroll-behavior: contain;
@@ -19,7 +19,7 @@
 }
 
 .searchExperience .viewport {
-  inset-block-start: 52px;
+  inset-block-start: 98px;
 }
 
 .searchModeBar {
@@ -46,6 +46,53 @@
 
 .searchModeBar button {
   flex: none;
+}
+
+.budgetBar {
+  position: absolute;
+  z-index: 4;
+  inset: 0 0 auto;
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.4rem 1rem;
+  background: rgb(252 251 249 / 94%);
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+}
+
+.budgetBar strong {
+  margin-left: 0.25rem;
+  color: var(--ink);
+}
+
+.budgetBar i {
+  width: 5rem;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.budgetBar i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--plum);
+}
+
+.budgetRemaining {
+  margin-left: auto;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.searchBudgetBar {
+  inset-block-start: 52px;
+  min-height: 46px;
 }
 
 .dragging {
@@ -558,8 +605,11 @@
     max-width: none;
     aspect-ratio: auto;
   }
+  .viewport {
+    inset-block-start: 46px;
+  }
   .searchExperience .viewport {
-    inset-block-start: 52px;
+    inset-block-start: 98px;
   }
   .searchModeBar {
     min-height: 52px;
@@ -570,6 +620,15 @@
     min-height: 36px;
     padding-inline: 0.65rem;
     font-size: 0.68rem;
+  }
+  .budgetBar {
+    min-height: 46px;
+    gap: 0.55rem;
+    padding-inline: 0.65rem;
+    font-size: 0.62rem;
+  }
+  .budgetBar i {
+    width: 2.8rem;
   }
   .card {
     border-radius: 0;
