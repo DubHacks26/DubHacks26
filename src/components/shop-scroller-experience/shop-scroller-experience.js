@@ -6,7 +6,7 @@ import Landing from "@/components/landing/landing";
 import Onboarding from "@/components/onboarding/onboarding";
 import AppShell from "@/components/shop-scroller/shop-scroller";
 
-export default function ShopScrollerExperience({ user }) {
+export default function ShopScrollerExperience({ user, initialPage = "Discover" }) {
   const [stage, setStage] = useState("loading");
   const [profile, setProfile] = useState(createProfile);
   const [storageError, setStorageError] = useState("");
@@ -32,5 +32,5 @@ export default function ShopScrollerExperience({ user }) {
     setProfile(current => ({ ...current, preferences: preferences || current.preferences, onboarded: true }));
     setStage("app");
   }} />;
-  return <><AppShell profile={profile} setProfile={setProfile} user={user} />{storageError && <p role="status" className="storage-notice">{storageError}</p>}</>;
+  return <><AppShell initialPage={initialPage} profile={profile} setProfile={setProfile} user={user} />{storageError && <p role="status" className="storage-notice">{storageError}</p>}</>;
 }

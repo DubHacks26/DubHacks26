@@ -21,16 +21,23 @@
   flex-direction: column;
   gap: 0.25rem;
 }
-.sidebar nav button {
+.sidebar nav .navLink {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   width: 100%;
-  justify-content: flex-start;
   padding: 0.75rem 0.8rem;
   border-radius: 0.7rem;
+  background: transparent;
   color: var(--muted);
+  font: inherit;
   font-size: 0.83rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 180ms ease, color 180ms ease;
 }
-.sidebar nav button:hover {
+.sidebar nav .navLink:hover {
   background: var(--paper);
   color: var(--ink);
 }
@@ -38,7 +45,7 @@
   background: var(--lavender);
   color: var(--plum);
 }
-.activeNav i {
+.sidebar nav .activeNav i {
   position: absolute;
   right: 0.75rem;
   width: 5px;
@@ -201,17 +208,16 @@
     background: rgb(255 255 255 / 95%);
     backdrop-filter: blur(12px);
   }
-  .mobileNav button {
+  .mobileLink {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.2rem;
-    border: 0;
-    background: none;
     color: var(--muted);
     font-size: 0.55rem;
+    text-decoration: none;
   }
-  .mobileNav button svg {
+  .mobileLink svg {
     width: 1.25rem;
   }
   .mobileNav .activeMobile {
@@ -221,3 +227,100 @@
 /* App shell */
 .toast { max-width: calc(100vw - 2rem); width: max-content; border-radius: 1rem; line-height: 1.5; }
 @media(max-width: 760px) { .toast { bottom: 5rem; } }
+
+/* Scroll adopts the dark reel treatment from shopscroll.html. */
+.scrollShell {
+  --ink: #f6f0f4;
+  --muted: #a999ad;
+  --paper: #15101a;
+  --plum: #9a5a8c;
+  --plum-dark: #6b3a62;
+  --lavender: #3a2745;
+  --blush: #1d1623;
+  --coral: #ff4d7d;
+  --sage: #3a2745;
+  --line: #2f2536;
+  --shadow: 0 18px 55px rgb(0 0 0 / 35%);
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background: #15101a;
+  color: #f6f0f4;
+}
+.scrollShell .sidebar {
+  border-color: #2f2536;
+  background: #15101a;
+}
+.scrollShell .sidebar nav .navLink:hover { background: #1d1623; color: #f6f0f4; }
+.scrollShell .sidebar nav .activeNav { background: #3a2745; color: #fff; }
+.scrollShell .tasteCard { border: 1px solid #2f2536; background: #1d1623; color: #a999ad; }
+.scrollShell .tasteCard strong { color: #f6f0f4; }
+.scrollShell .tasteCard > div { background: #2f2536; }
+.scrollShell .tasteCard > div i { background: #ff4d7d; }
+.scrollShell .user > div { background: #3a2745; color: #fff; }
+.scrollShell .main {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: #15101a;
+}
+.scrollShell .scrollTopbar {
+  height: 60px;
+  flex: 0 0 60px;
+  border-color: #2f2536;
+  background: #15101a;
+}
+.scrollShell .search {
+  border-color: #2f2536;
+  background: #1d1623;
+  color: #a999ad;
+}
+.scrollShell .search kbd { border-color: #2f2536; background: #15101a; color: #a999ad; }
+.scrollShell .topbar > button { border-color: #2f2536; background: #1d1623; color: #f6f0f4; }
+.scrollShell .streak strong { color: #f6f0f4; }
+.scrollShell .toast { background: #fff; color: #241a26; }
+.scrollShell .mobileNav { border-color: #2f2536; background: rgb(29 22 35 / 96%); }
+.scrollShell .mobileLink { color: #a999ad; }
+.scrollShell .mobileNav .activeMobile { color: #fff; }
+
+@media (max-width: 820px) {
+  .scrollShell .sidebar { display: none; }
+  .scrollShell .main { margin-left: 0; padding-bottom: 4.3rem; }
+  .scrollShell .scrollTopbar {
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 52px;
+    padding: 0 12px;
+    border: 0;
+    background: linear-gradient(#15101abf, transparent);
+  }
+  .scrollShell .scrollTopbar .search,
+  .scrollShell .scrollTopbar .streak { display: none; }
+  .scrollShell .scrollTopbar > button { margin-left: auto; border-color: rgb(255 255 255 / 25%); background: rgb(29 22 35 / 55%); }
+  .scrollShell .mobileNav {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    height: 4.3rem;
+    justify-content: space-around;
+    border-top: 1px solid #2f2536;
+    backdrop-filter: blur(12px);
+  }
+  .scrollShell .mobileLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    color: #a999ad;
+    font-size: 0.55rem;
+  }
+  .scrollShell .mobileLink svg { width: 1.25rem; }
+}

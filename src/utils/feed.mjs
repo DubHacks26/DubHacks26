@@ -62,7 +62,9 @@ export function explainProduct(product, profile, catalog) {
   return 'Explore something new. This item is within your selected price range.';
 }
 export function productChips(product) {
-  const price = product.price < 50 ? 'Under $50' : product.price < 100 ? 'Under $100' : `$${product.price}`;
+  const price = !Number.isFinite(product.price) ? null
+    : product.price < 50 ? 'Under $50'
+      : product.price < 100 ? 'Under $100' : `$${product.price}`;
   return [product.category, price].filter(Boolean);
 }
 export function recordAction(profile, productId, action) {

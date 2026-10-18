@@ -29,6 +29,25 @@ async function handleRecommendations(req, res) {
   return res.json({ products: data || [] });
 }
 
+async function handleCatalog(req, res) {
+  const client = catalogClient(req, res);
+  if (!client) return;
+  const limit = Number(req.query.limit ?? 100);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    return res.status(400).json({ error: 'Limit must be between 1 and 100.' });
+  }
+  const { data, error } = await client.from('catalog_products')
+    .select('asin,title,brand,summary,image_url,product_url,price_cents,rating,review_count,categories,hashtags,tags,last_seen_at')
+    .order('last_seen_at', { ascending: false })
+    .order('asin', { ascending: true })
+    .limit(limit);
+  if (error) {
+    console.error('Catalog lookup failed:', error);
+    return res.status(503).json({ error: 'The product catalog is temporarily unavailable.' });
+  }
+  return res.json({ products: data || [] });
+}
+
 async function handleInteraction(req, res) {
   const client = catalogClient(req, res);
   if (!client) return;
@@ -51,6 +70,7 @@ async function handleInteraction(req, res) {
   return res.json({ applied: data === true });
 }
 
+Router.get('/catalog', handleCatalog);
 Router.get('/recommendations', handleRecommendations);
 Router.post('/interactions', handleInteraction);
 
@@ -58,4 +78,4 @@ Router.get('/user', async (req, res) => {
   return res.status(200).json({ message: 'User route is working!' });
 });
 
-module.exports = { Router, handleRecommendations, handleInteraction };
+module.exports = { Router, handleCatalog, handleRecommendations, handleInteraction };

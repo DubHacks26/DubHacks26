@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { products } from "@/utils/shopScrollerData";
+import { products as demoProducts } from "@/utils/shopScrollerData";
+import { formatProductPrice } from "@/utils/catalogProduct.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import PageHeader from "@/components/page-header/page-header";
 import styles from "./budget.module.css";
 
-export default function Budget({ saved, onRemove }) {
+export default function Budget({ saved, onRemove, catalogProducts = [] }) {
   const [limit, setLimit] = useState(400);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("400");
-  const selected = products.filter((product) => saved.includes(product.id));
-  const total = selected.reduce((sum, product) => sum + product.price, 0);
-  const categoryBreakdown = [...new Set(selected.map(p => p.category))].map(category => [category, total ? Math.round(selected.filter(p => p.category === category).reduce((sum, p) => sum + p.price, 0) / total * 100) : 0]);
+  const selected = [...demoProducts, ...catalogProducts].filter((product) => saved.includes(product.id));
+  const total = selected.reduce((sum, product) => sum + (Number.isFinite(product.price) ? product.price : 0), 0);
+  const categoryBreakdown = [...new Set(selected.map(p => p.category))].map(category => [category, total ? Math.round(selected.filter(p => p.category === category).reduce((sum, p) => sum + (Number.isFinite(p.price) ? p.price : 0), 0) / total * 100) : 0]);
   const percentage = Math.round((total / limit) * 100);
 
   const updateLimit = (event) => {
@@ -36,8 +37,8 @@ export default function Budget({ saved, onRemove }) {
       <div className={styles.hero}>
         <div>
           <p>Wishlist value</p>
-          <strong>${total}</strong>
-          <span>of ${limit} comfort budget</span>
+          <strong>{formatProductPrice(total)}</strong>
+          <span>of {formatProductPrice(limit)} comfort budget</span>
         </div>
         <div
           className={styles.ring}
@@ -49,7 +50,7 @@ export default function Budget({ saved, onRemove }) {
         </div>
         <div className={styles.remaining}>
           <p>Remaining</p>
-          <strong>${Math.max(limit - total, 0)}</strong>
+            <strong>{formatProductPrice(Math.max(limit - total, 0))}</strong>
           <Button onClick={() => setEditing(true)} variant="secondary">
             Adjust budget
           </Button>
@@ -77,7 +78,7 @@ export default function Budget({ saved, onRemove }) {
         <div className={styles.warning}>
           <Icon name="wallet" />
           <p>
-            <strong>Your wishlist is ${total - limit} over budget.</strong>
+            <strong>Your wishlist is {formatProductPrice(total - limit)} over budget.</strong>
             <span>Try removing an item or adjusting your comfort budget.</span>
           </p>
         </div>
@@ -105,7 +106,7 @@ export default function Budget({ saved, onRemove }) {
                   <strong>{product.name}</strong>
                   <span>{product.brand}</span>
                 </p>
-                <b>${product.price}</b>
+                <b>{formatProductPrice(product.price)}</b>
                 <Button
                   aria-label={`Remove ${product.name}`}
                   onClick={() => onRemove(product)}

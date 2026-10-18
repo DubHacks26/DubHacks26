@@ -145,3 +145,107 @@ Run `npm test` for vector, real-model, and route tests. After applying the
 migration, `RUN_DB_INTEGRATION_TESTS=1 npm test` also exercises concurrent
 updates, duplicate events, missing embeddings, fallback, and deduplicated
 recommendations against Supabase using temporary test users and products.
+
+## Semantic hashtag graph (backend only)
+
+Apply `supabase/migrations/20261018010000_hashtag_graph.sql` after the catalog
+recommendation migration. It adds four tables:
+
+- `hashtags`: stable UUID, unique canonical name, independent normalized 384D
+  embedding, and resumable embedding/graph work state.
+- `hashtag_neighbors`: each node's directed nearest-neighbor selections.
+- `hashtag_edges`: the undirected union of those selections, with canonical
+  endpoint order, foreign keys, and cosine similarity weights.
+- `hashtag_graph_settings`: the settings used by the last graph update.
+
+All tables and RPCs are restricted to the server role. Graph endpoints use the
+existing Express authentication middleware. No vectors or model outputs beyond
+similarity scores are returned to the browser.
+
+### Synchronization
+
+With the Supabase URL and server secret configured in `.env.local` (or exported
+environment variables), run:
+
+```bash
+npm run supabase:push
+npm run sync:hashtag-graph
+# Repair all selections/edges, retaining IDs and already computed embeddings:
+npm run sync:hashtag-graph -- --rebuild
+```
+
+Run sync after importing/generating product hashtags, or from your job scheduler.
+It is an explicit background/batch operation; imports and feed requests do not
+automatically launch it. The command pages through `catalog_products.hashtags`,
+deduplicates normalized names, and embeds only missing names. For an incremental
+import job that already knows its changed products, use
+`syncHashtagGraph(db, { products: changedProducts })` from `lib/hashtag-graph.mjs`.
+`registerProductHashtags` can also register work without doing model inference.
+
+Normalization removes leading `#`, turns underscores into spaces, collapses
+whitespace, trims, and lowercases: `#Coffee_Machine` becomes `coffee machine`.
+Each name is embedded individually using the existing shared Transformers.js
+model instance (`Xenova/all-MiniLM-L6-v2`). Product and user vectors are unchanged.
+Names/IDs are retained if products stop using a hashtag; rebuild repairs edges
+but does not delete historical hashtags or regenerate embeddings.
+
+The default graph uses **8** nearest neighbors and a **0.65** minimum cosine
+similarity, configured in `lib/hashtag-graph-config.cjs`. A node's final undirected
+degree may exceed eight when other nodes select it. Incremental refresh examines
+new vectors against existing selection boundaries, then recomputes only affected
+sources and incident edges. A settings change automatically forces a rebuild.
+Ties use stable UUID ordering. Rebuild also removes obsolete/orphan selections
+and repairs missing edges. A failed transaction leaves the previous graph intact.
+
+Database leases prevent duplicate embedding work between concurrent sync workers.
+Caught errors release a lease and fail the command; after a crash, an unfinished
+claim becomes available again in 15 minutes. Rerunning resumes missing embeddings
+and pending graph work. Graph writes are serialized separately from recommendation
+updates. The first model use may download model files and needs internet access.
+
+Similarity search uses exact pgvector queries in PostgreSQL; no pairwise matrix
+is built in Node. Full rebuilds still have quadratic distance-comparison cost,
+so run them off the request path. For much larger vocabularies, profile and
+consider HNSW with its approximate-neighbor tradeoff; this implementation favors
+exact, reproducible neighbor selections.
+
+### API
+
+`GET /hashtags/graph` requires a Bearer Supabase access token. Query parameters:
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `hashtag` | omitted | Exact normalized name; selects that node and its strongest direct neighbors. |
+| `limit` | 100 | Maximum nodes, including the seed; integer 1–300. |
+| `linkLimit` | 500 | Maximum links; integer 1–2000. |
+
+Without a seed, nodes are selected alphabetically. Links are the strongest
+stored edges whose endpoints are both in the selected nodes. Isolated embedded
+hashtags are included. An unknown/unembedded seed or empty graph returns
+`{"nodes":[],"links":[]}`. Invalid parameters return 400; database failures return
+503. Limits bound both SQL results and response size. No coordinates or embedding
+inference are computed by this endpoint.
+
+```bash
+curl --get 'http://localhost:5000/hashtags/graph' \
+  --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  --data-urlencode 'hashtag=#coffee_machine' \
+  --data-urlencode 'limit=30' \
+  --data-urlencode 'linkLimit=100'
+```
+
+The response is `{ nodes: [{ id, name }], links: [{ source, target, similarity }] }`.
+IDs are UUID strings, display names use underscores, and every link references
+returned nodes. The frontend can use these IDs directly with `3d-force-graph`.
+No frontend visualization or recommendation changes are included.
+
+### Graph tests
+
+`npm test` includes real-model semantic checks and an isolated PGlite/PostgreSQL
+database with pgvector. The two PGlite packages are development-only dependencies;
+these graph database tests require no Supabase credentials and touch no live data.
+They execute the actual migrations and sync service, covering pagination,
+deduplication, incremental neighbor replacement, top-k limits, undirected edges,
+thresholds, deterministic rebuilds, repair, leases, permissions, and bounded API
+queries. PGlite is single-connection; production multi-connection load/lock timing
+is not benchmarked by this suite.

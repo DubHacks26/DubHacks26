@@ -4,16 +4,12 @@ import { useEffect } from "react";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
+import { formatProductPrice } from "@/utils/catalogProduct.mjs";
 import styles from "./product-drawer.module.css";
 
-const reviewBars = [
-  [5, 78],
-  [4, 14],
-  [3, 6],
-  [2, 2],
-];
-
 export default function ProductDrawer({ product, type, onClose, onSave }) {
+  const reviewCount = Number.isInteger(product.reviews) && product.reviews > 0 ? product.reviews : 0;
+  const rating = Number.isFinite(product.rating) ? product.rating.toFixed(1) : null;
   useEffect(() => {
     const closeOnEscape = (event) => {
       if (event.key === "Escape") onClose();
@@ -54,29 +50,25 @@ export default function ProductDrawer({ product, type, onClose, onSave }) {
           </p>
           <h2>{product.name}</h2>
           <div className={styles.rating}>
-            <strong>${product.price}</strong>
+            <strong>{formatProductPrice(product.price)}</strong>
             <span>
-              <Icon filled name="star" size={14} /> {product.rating} (
-              {product.reviews.toLocaleString()})
+              {rating && <Icon filled name="star" size={14} />} {rating || "Not rated"} · {reviewCount.toLocaleString()} ratings
             </span>
           </div>
           {type === "details" ? (
             <>
               <p>{product.description}</p>
-              <h3>Why it&apos;s in your feed</h3>
+              <h3>About this find</h3>
               <div className={styles.note}>
                 <Icon name="sparkles" size={18} />
                 <p>
-                  Recommended because you like minimalist design and usually
-                  save products under $100.
-                  <small>AI-generated demo explanation</small>
+                  A product from the ShopScroll catalog. Heart or save it to keep track of what catches your eye.
                 </p>
               </div>
               <h3>Good to know</h3>
               <ul>
-                <li>Free 30-day returns</li>
-                <li>Ships in 2–4 business days</li>
-                <li>Materials and care details available at retailer</li>
+                <li>Visit the retailer listing for current availability, shipping, and return details.</li>
+                <li>Price and product details may change at the retailer.</li>
               </ul>
             </>
           ) : (
@@ -84,35 +76,9 @@ export default function ProductDrawer({ product, type, onClose, onSave }) {
               <div className={styles.note}>
                 <Icon name="sparkles" size={18} />
                 <p>
-                  Buyers often praise the thoughtful design and everyday
-                  comfort. A few mention the finish can show wear over time.
-                  <small>AI-generated demo summary, not verified reviews</small>
+                  {reviewCount ? `${reviewCount.toLocaleString()} customer ratings are listed in the catalog.` : "Customer ratings are not available in the catalog yet."}
+                  <small>Individual review text is not included here.</small>
                 </p>
-              </div>
-              <div className={styles.reviewBars}>
-                {reviewBars.map(([stars, share]) => (
-                  <div key={stars}>
-                    <span>
-                      {stars} <Icon filled name="star" size={11} />
-                    </span>
-                    <i>
-                      <b style={{ width: `${share}%` }} />
-                    </i>
-                    <small>{share}%</small>
-                  </div>
-                ))}
-              </div>
-              <h3>What people mention</h3>
-              <div className={styles.sentiments}>
-                <span>
-                  <Icon name="check" /> Beautiful finish
-                </span>
-                <span>
-                  <Icon name="check" /> Easy to use
-                </span>
-                <span>
-                  <Icon name="x" /> Packaging
-                </span>
               </div>
             </>
           )}
@@ -120,13 +86,16 @@ export default function ProductDrawer({ product, type, onClose, onSave }) {
             <Button onClick={() => onSave(product)}>
               <Icon name="bookmark" size={17} /> Save to collection
             </Button>
-            <Button
-              disabled
-              title="Retailer links are not available in this demo"
-              variant="secondary"
+            {product.productUrl ? <a
+              className={styles.retailerLink}
+              href={product.productUrl}
+              rel="noopener noreferrer"
+              target="_blank"
             >
               Visit retailer <Icon name="arrowRight" size={17} />
-            </Button>
+            </a> : <Button disabled title="Retailer link unavailable" variant="secondary">
+              Visit retailer <Icon name="arrowRight" size={17} />
+            </Button>}
           </div>
         </div>
       </aside>

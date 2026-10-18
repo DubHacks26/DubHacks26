@@ -2,12 +2,34 @@ import AxiosInstance from "@/utils/axiosInstance";
 import { getSupabaseClient } from "@/utils/supabaseClient";
 import { requestHandler } from "@/utils/tools";
 
+const catalogCache = new Map();
+
 async function getUserInfo() {
   const res = await requestHandler(AxiosInstance.get(`/user/user`, {}));
   if (res.status == 200) {
     return { loggedIn: true, data: res.data };
   }
   return { loggedIn: false, data: {} }
+}
+
+async function getCatalogProducts(limit = 100, { refresh = false } = {}) {
+  const cached = catalogCache.get(limit);
+  if (!refresh && cached && Date.now() - cached.createdAt < 5 * 60 * 1000) {
+    return cached.promise;
+  }
+
+  const entry = {
+    createdAt: Date.now(),
+    promise: AxiosInstance.get("/user/catalog", { params: { limit } })
+      .then(response => response.data?.products || []),
+  };
+  catalogCache.set(limit, entry);
+  try {
+    return await entry.promise;
+  } catch (error) {
+    if (catalogCache.get(limit) === entry) catalogCache.delete(limit);
+    throw error;
+  }
 }
 
 async function signIn(credentials) {
@@ -57,7 +79,7 @@ async function signOut() {
   }
 }
 
-export { getCurrentSession, getUserInfo, onAuthStateChange, signIn, signOut, signUp };
+export { getCatalogProducts, getCurrentSession, getUserInfo, onAuthStateChange, signIn, signOut, signUp };
 
 export async function requestPasswordReset(email) {
   const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, {

@@ -63,6 +63,9 @@ const cspOptions = {
     scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+    // Product imagery is served directly from the catalog's Amazon image host
+    // and the local reference imagery host allowed in next.config.mjs.
+    imgSrc: ["'self'", "data:", "https://images.unsplash.com", "https://m.media-amazon.com"],
     connectSrc: ["'self'", "https:"],
     workerSrc: ["'self'", "blob:"],
   },
@@ -197,6 +200,7 @@ app.use("/auth", authAPI);
 const userAPI = require("./api/user").Router;
 
 app.use("/user", requireAuth, userAPI);
+app.use("/hashtags", requireAuth, require("./api/hashtags").Router);
 
 let subscriptions = [];
 

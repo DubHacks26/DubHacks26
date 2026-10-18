@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { products } from "@/utils/shopScrollerData";
+import { products as demoProducts } from "@/utils/shopScrollerData";
+import { formatProductPrice } from "@/utils/catalogProduct.mjs";
 import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import ProductImage from "@/components/product-image/product-image";
 import PageHeader from "@/components/page-header/page-header";
 import styles from "./collections.module.css";
 
-export default function Collections({ saved, onSave, onDiscover }) {
+export default function Collections({ saved, onSave, onDiscover, catalogProducts = [] }) {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [custom, setCustom] = useState([]);
-  const savedProducts = products.filter((product) =>
+  const savedProducts = [...demoProducts, ...catalogProducts].filter((product) =>
     saved.includes(product.id),
   );
   const collections = custom;
@@ -101,7 +102,7 @@ export default function Collections({ saved, onSave, onDiscover }) {
               <article key={product.id}>
                 <ProductImage alt="" src={product.image} />
                 <strong>{product.name}</strong>
-                <span>${product.price}</span>
+                <span>{formatProductPrice(product.price)}</span>
                 <Button onClick={() => onSave(product)} variant="ghost">
                   Remove
                 </Button>

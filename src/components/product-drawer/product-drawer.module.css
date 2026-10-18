@@ -138,8 +138,27 @@
   gap: 0.6rem;
   margin-top: 2rem;
 }
-.actions button {
+.actions button,
+.retailerLink {
   font-size: 0.75rem;
+}
+.retailerLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.76rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+.retailerLink:hover {
+  border-color: var(--plum);
+  transform: translateY(-2px);
 }
 @keyframes slideIn {
   from {
