@@ -88,7 +88,7 @@ export default function Home() {
       <span className={styles.accountEmail}>{user.user_metadata?.username || user.user_metadata?.name || "Shopper"}</span>
       {error && <span role="alert">{error}</span>}
       <button className={styles.signOutButton} onClick={handleSignOut} disabled={busy}>{busy ? "Signing out…" : "Sign out"}</button>
-    </header>
+    </header> */
     <ShopScrollerExperience key={user.id} user={user} />
   </>;
 

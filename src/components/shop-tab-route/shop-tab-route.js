@@ -67,13 +67,6 @@ export default function ShopTabRoute({ initialPage }) {
   }
 
   return <>
-    <header className={styles.accountBar}>
-      <span className={styles.accountEmail}>{user.user_metadata?.username || user.user_metadata?.name || "Shopper"}</span>
-      {error && <span role="alert">{error}</span>}
-      <button className={styles.signOutButton} disabled={busy} onClick={handleSignOut}>
-        {busy ? "Signing out…" : "Sign out"}
-      </button>
-    </header>
     <ShopScrollerExperience key={user.id} initialPage={initialPage} user={user} />
   </>;
 }

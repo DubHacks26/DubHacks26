@@ -13,8 +13,18 @@
   border-right: 1px solid var(--line);
   background: #fcfbf9;
 }
-.sidebar > div:first-child {
+.sidebar > :first-child {
   padding: 0.2rem 0.65rem 2rem;
+}
+.brandHome {
+  width: fit-content;
+  border-radius: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+.brandHome:focus-visible {
+  outline: 3px solid rgb(109 58 99 / 35%);
+  outline-offset: 3px;
 }
 .sidebar nav {
   display: flex;
@@ -228,62 +238,62 @@
 .toast { max-width: calc(100vw - 2rem); width: max-content; border-radius: 1rem; line-height: 1.5; }
 @media(max-width: 760px) { .toast { bottom: 5rem; } }
 
-/* Scroll adopts the dark reel treatment from shopscroll.html. */
+/* Scroll uses the same warm paper and plum palette as the other pages. */
 .scrollShell {
-  --ink: #f6f0f4;
-  --muted: #a999ad;
-  --paper: #15101a;
-  --plum: #9a5a8c;
-  --plum-dark: #6b3a62;
-  --lavender: #3a2745;
-  --blush: #1d1623;
-  --coral: #ff4d7d;
-  --sage: #3a2745;
-  --line: #2f2536;
-  --shadow: 0 18px 55px rgb(0 0 0 / 35%);
+  --ink: #2a2028;
+  --muted: #776d73;
+  --paper: #f8f6f2;
+  --plum: #6d3a63;
+  --plum-dark: #4c2947;
+  --lavender: #e9deeb;
+  --blush: #f3ddd9;
+  --coral: #e36f5e;
+  --sage: #dfe8dd;
+  --line: #e7e1dc;
+  --shadow: 0 18px 55px rgb(67 45 61 / 12%);
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: #15101a;
-  color: #f6f0f4;
+  background: var(--paper);
+  color: var(--ink);
 }
 .scrollShell .sidebar {
-  border-color: #2f2536;
-  background: #15101a;
+  border-color: var(--line);
+  background: var(--paper);
 }
-.scrollShell .sidebar nav .navLink:hover { background: #1d1623; color: #f6f0f4; }
-.scrollShell .sidebar nav .activeNav { background: #3a2745; color: #fff; }
-.scrollShell .tasteCard { border: 1px solid #2f2536; background: #1d1623; color: #a999ad; }
-.scrollShell .tasteCard strong { color: #f6f0f4; }
-.scrollShell .tasteCard > div { background: #2f2536; }
-.scrollShell .tasteCard > div i { background: #ff4d7d; }
-.scrollShell .user > div { background: #3a2745; color: #fff; }
+.scrollShell .sidebar nav .navLink:hover { background: var(--lavender); color: var(--plum); }
+.scrollShell .sidebar nav .activeNav { background: var(--plum); color: #fff; }
+.scrollShell .tasteCard { border: 1px solid var(--line); background: #fff; color: var(--muted); }
+.scrollShell .tasteCard strong { color: var(--ink); }
+.scrollShell .tasteCard > div { background: var(--lavender); }
+.scrollShell .tasteCard > div i { background: var(--plum); }
+.scrollShell .user > div { background: var(--lavender); color: var(--plum); }
 .scrollShell .main {
   display: flex;
   height: 100vh;
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  background: #15101a;
+  background: var(--paper);
 }
 .scrollShell .scrollTopbar {
   height: 60px;
   flex: 0 0 60px;
-  border-color: #2f2536;
-  background: #15101a;
+  border-color: var(--line);
+  background: var(--paper);
 }
 .scrollShell .search {
-  border-color: #2f2536;
-  background: #1d1623;
-  color: #a999ad;
+  border-color: var(--line);
+  background: #fff;
+  color: var(--muted);
 }
-.scrollShell .search kbd { border-color: #2f2536; background: #15101a; color: #a999ad; }
-.scrollShell .topbar > button { border-color: #2f2536; background: #1d1623; color: #f6f0f4; }
-.scrollShell .streak strong { color: #f6f0f4; }
-.scrollShell .toast { background: #fff; color: #241a26; }
-.scrollShell .mobileNav { border-color: #2f2536; background: rgb(29 22 35 / 96%); }
-.scrollShell .mobileLink { color: #a999ad; }
-.scrollShell .mobileNav .activeMobile { color: #fff; }
+.scrollShell .search kbd { border-color: var(--line); background: var(--paper); color: var(--muted); }
+.scrollShell .topbar > button { border-color: var(--line); background: #fff; color: var(--ink); }
+.scrollShell .streak strong { color: var(--ink); }
+.scrollShell .toast { background: #fff; color: var(--ink); }
+.scrollShell .mobileNav { border-color: var(--line); background: rgb(248 246 242 / 96%); }
+.scrollShell .mobileLink { color: var(--muted); }
+.scrollShell .mobileNav .activeMobile { color: var(--plum); }
 
 @media (max-width: 820px) {
   .scrollShell .sidebar { display: none; }
@@ -297,11 +307,11 @@
     height: 52px;
     padding: 0 12px;
     border: 0;
-    background: linear-gradient(#15101abf, transparent);
+    background: linear-gradient(#f8f6f2ee, transparent);
   }
   .scrollShell .scrollTopbar .search,
   .scrollShell .scrollTopbar .streak { display: none; }
-  .scrollShell .scrollTopbar > button { margin-left: auto; border-color: rgb(255 255 255 / 25%); background: rgb(29 22 35 / 55%); }
+  .scrollShell .scrollTopbar > button { margin-left: auto; border-color: var(--line); background: rgb(255 255 255 / 82%); }
   .scrollShell .mobileNav {
     position: fixed;
     z-index: 30;
@@ -311,7 +321,7 @@
     display: flex;
     height: 4.3rem;
     justify-content: space-around;
-    border-top: 1px solid #2f2536;
+    border-top: 1px solid var(--line);
     backdrop-filter: blur(12px);
   }
   .scrollShell .mobileLink {
@@ -319,7 +329,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.2rem;
-    color: #a999ad;
+    color: var(--muted);
     font-size: 0.55rem;
   }
   .scrollShell .mobileLink svg { width: 1.25rem; }

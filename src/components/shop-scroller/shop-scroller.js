@@ -26,7 +26,9 @@ function Sidebar({ page, username, count, catalogSize }) {
   const hasLikes = count > 0;
   return (
     <aside className={styles.sidebar}>
-      <Brand scrollMode={page === "Scroll"} />
+      <Link aria-label="ShopScroll home" className={styles.brandHome} href="/discover">
+        <Brand scrollMode={page === "Scroll"} />
+      </Link>
       <nav aria-label="ShopScroller">
         {navItems.map((item) => (
           <Link

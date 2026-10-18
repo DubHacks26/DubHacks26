@@ -12,6 +12,7 @@ const AXIS_LOCK = 8;
 const HEART_DISTANCE = 90;
 const WHEEL_DISTANCE = 150;
 const EDGE_RESISTANCE = 0.24;
+const SWIPE_EXIT_DURATION = 380;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -36,6 +37,9 @@ export default function ProductScroll({
   const [cursor, setCursor] = useState(0);
   const [drag, setDrag] = useState({ axis: "", x: 0, y: 0 });
   const [heartPulse, setHeartPulse] = useState(false);
+  const [exitSwipe, setExitSwipe] = useState(null);
+  const [imageRatios, setImageRatios] = useState({});
+  const [hoveredCard, setHoveredCard] = useState(null);
   const [boundaryMessage, setBoundaryMessage] = useState("");
   const gesture = useRef(null);
   const wheelLock = useRef(false);
@@ -44,6 +48,10 @@ export default function ProductScroll({
   const wheelUnlockTimer = useRef(null);
   const heartTimer = useRef(null);
   const boundaryTimer = useRef(null);
+  const exitTimer = useRef(null);
+  const cardClickTimer = useRef(null);
+  const suppressCardClick = useRef(false);
+  const viewportRef = useRef(null);
   const productCount = products.length;
   const index = clamp(cursor, 0, Math.max(productCount - 1, 0));
   const product = products[index];
@@ -53,6 +61,8 @@ export default function ProductScroll({
     window.clearTimeout(wheelUnlockTimer.current);
     window.clearTimeout(heartTimer.current);
     window.clearTimeout(boundaryTimer.current);
+    window.clearTimeout(exitTimer.current);
+    window.clearTimeout(cardClickTimer.current);
   }, []);
 
   const showBoundary = (message) => {
@@ -62,6 +72,7 @@ export default function ProductScroll({
   };
 
   const moveTo = (nextIndex) => {
+    if (exitSwipe) setExitSwipe(null);
     const clamped = clamp(nextIndex, 0, productCount - 1);
     if (clamped === index) {
       showBoundary(nextIndex < 0 ? "You’re at the first find" : "You’re at the end of this scroll");
@@ -74,15 +85,70 @@ export default function ProductScroll({
   const previous = () => moveTo(index - 1);
   const next = () => moveTo(index + 1);
   const heart = () => {
-    if (!product) return;
+    if (!product || exitSwipe) return;
     onHeart(product);
     setHeartPulse(true);
     window.clearTimeout(heartTimer.current);
     heartTimer.current = window.setTimeout(() => setHeartPulse(false), 760);
   };
 
+  const swipeHeart = (direction) => {
+    if (!product || exitSwipe) return;
+    onHeart(product);
+    setHeartPulse(true);
+    setExitSwipe({ id: product.id, direction });
+    window.clearTimeout(exitTimer.current);
+    exitTimer.current = window.setTimeout(() => {
+      setDrag({ axis: "", x: 0, y: 0 });
+      setHeartPulse(false);
+      if (index < productCount - 1) {
+        setCursor(index + 1);
+        window.clearTimeout(exitTimer.current);
+        exitTimer.current = window.setTimeout(() => setExitSwipe(null), 620);
+      } else {
+        showBoundary("You’re at the end of this scroll");
+      }
+    }, SWIPE_EXIT_DURATION);
+  };
+
+  const rememberImageRatio = (id, event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (!naturalWidth || !naturalHeight) return;
+    const ratio = naturalWidth / naturalHeight;
+    setImageRatios((ratios) => ratios[id] === ratio ? ratios : { ...ratios, [id]: ratio });
+  };
+
+  const toggleCardMorph = (id, event) => {
+    if (!event.currentTarget || event.target.closest("button, a, [data-scroll-action]")) return;
+    if (suppressCardClick.current) return;
+    if (hoveredCard?.id === id) {
+      setHoveredCard({ ...hoveredCard, active: !hoveredCard.active });
+      return;
+    }
+
+    const frame = event.currentTarget;
+    const bounds = frame.getBoundingClientRect();
+    const viewportBounds = viewportRef.current?.getBoundingClientRect();
+    if (!viewportBounds) return;
+    const isMobile = window.matchMedia("(max-width: 820px)").matches;
+    const ratio = imageRatios[id];
+    if (!ratio) return;
+
+    const edgePadding = isMobile ? 12 : 24;
+    const maxWidth = Math.max(1, viewportBounds.width - edgePadding * 2 - (isMobile ? 0 : 112));
+    const maxHeight = Math.max(1, viewportBounds.height - edgePadding * 2);
+    const height = Math.min(maxHeight, maxWidth / ratio);
+    const width = height * ratio;
+    setHoveredCard({ id, width, height, baseWidth: bounds.width, baseHeight: bounds.height, active: true });
+  };
+
+  const finishCardMorph = (id, event) => {
+    if (event.target !== event.currentTarget || !["width", "height"].includes(event.propertyName)) return;
+    setHoveredCard((current) => current?.id === id && !current.active ? null : current);
+  };
+
   const handlePointerDown = (event) => {
-    if (!product || event.target.closest("button, a, [data-scroll-action]")) return;
+    if (!product || exitSwipe || event.target.closest("button, a, [data-scroll-action]")) return;
     gesture.current = {
       x: event.clientX,
       y: event.clientY,
@@ -112,12 +178,16 @@ export default function ProductScroll({
     const y = event.clientY - start.y;
     const elapsed = Math.max(performance.now() - start.time, 1);
     const axis = start.axis || (Math.abs(x) > Math.abs(y) ? "x" : "y");
-    setDrag({ axis: "", x: 0, y: 0 });
-
+    if (Math.max(Math.abs(x), Math.abs(y)) > AXIS_LOCK) {
+      suppressCardClick.current = true;
+      window.clearTimeout(cardClickTimer.current);
+      cardClickTimer.current = window.setTimeout(() => { suppressCardClick.current = false; }, 0);
+    }
     if (axis === "x" && (Math.abs(x) > HEART_DISTANCE || (Math.abs(x) > 38 && Math.abs(x) / elapsed > 0.62))) {
-      heart();
+      swipeHeart(x < 0 ? -1 : 1);
       return;
     }
+    setDrag({ axis: "", x: 0, y: 0 });
 
     const threshold = Math.max(54, (event.currentTarget.clientHeight || 600) * 0.14);
     if (axis === "y" && (Math.abs(y) > threshold || (Math.abs(y) > 38 && Math.abs(y) / elapsed > 0.58))) {
@@ -132,6 +202,7 @@ export default function ProductScroll({
   };
 
   const handleWheel = (event) => {
+    if (exitSwipe) return;
     const horizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY);
     if (horizontal) {
       wheelX.current += Math.abs(event.deltaX);
@@ -140,7 +211,7 @@ export default function ProductScroll({
       if (!wheelLock.current && wheelX.current >= WHEEL_DISTANCE) {
         wheelX.current = 0;
         wheelLock.current = true;
-        heart();
+        swipeHeart(event.deltaX > 0 ? -1 : 1);
         wheelUnlockTimer.current = window.setTimeout(() => { wheelLock.current = false; }, 500);
       }
       return;
@@ -213,6 +284,7 @@ export default function ProductScroll({
         onPointerMove={handlePointerMove}
         onPointerUp={finishPointer}
         onWheel={handleWheel}
+        ref={viewportRef}
         role="region"
         tabIndex={0}
       >
@@ -222,7 +294,8 @@ export default function ProductScroll({
         >
           {visibleProducts.map(({ item, itemIndex }) => {
             const selected = itemIndex === index;
-            const brand = item.brand || "Independent brand";
+            const exiting = exitSwipe?.id === item.id;
+            const cardMorph = hoveredCard?.id === item.id ? hoveredCard : null;
             const reviewCount = Number.isInteger(item.reviews) && item.reviews > 0 ? item.reviews : 0;
             const rating = Number.isFinite(item.rating) ? item.rating.toFixed(1) : null;
             const priceLabel = formatProductPrice(item.price);
@@ -231,47 +304,43 @@ export default function ProductScroll({
             const horizontalOffset = selected && drag.axis === "x" ? drag.x * 0.62 : 0;
             const rotation = selected && drag.axis === "x" ? drag.x / 45 : 0;
             const badgeProgress = selected && drag.axis === "x" ? clamp(Math.abs(drag.x) / HEART_DISTANCE, 0, 1) : 0;
-            const itemTags = [...(item.styles || []), ...(item.colors || [])].slice(0, 3);
-            const catalogTags = (item.tags || []).slice(0, 2).map(titleCase);
-            const itemContextTags = [...new Set([...productChips(item), ...itemTags.map(titleCase), ...catalogTags])].slice(0, 4);
 
             return (
               <div aria-hidden={!selected} className={styles.reel} inert={!selected} key={item.id} style={{ top: `${itemIndex * 100}%` }}>
-                <div className={styles.frame}>
-                  <aside className={styles.out} aria-label={`${brand} product tags`}>
-                    <div className={styles.who}>
-                      <span className={styles.avatar} aria-hidden="true">{brand.slice(0, 1).toUpperCase()}</span>
-                      <span>{brand}</span>
-                    </div>
-                    <p className={styles.tags}>{itemContextTags.join(" · ")}</p>
-                  </aside>
+                <div
+                  className={styles.frame}
+                  onClick={(event) => selected && toggleCardMorph(item.id, event)}
+                  onTransitionEnd={(event) => finishCardMorph(item.id, event)}
+                  style={cardMorph ? {
+                    width: `${cardMorph.active ? cardMorph.width : cardMorph.baseWidth}px`,
+                    height: `${cardMorph.active ? cardMorph.height : cardMorph.baseHeight}px`,
+                  } : undefined}
+                >
 
                   <article
                     aria-label={`${item.name}, ${priceLabel}`}
-                    className={`${styles.card} ${selected && drag.axis === "x" ? styles.cardDragging : ""} ${selected && heartPulse ? styles.cardPop : ""}`}
+                    className={`${styles.card} ${cardMorph?.active ? styles.cardExpanded : ""} ${selected && drag.axis === "x" && !exiting ? styles.cardDragging : ""} ${exiting ? styles.cardExiting : ""} ${selected && heartPulse ? styles.cardPop : ""}`}
                     onDoubleClick={(event) => {
                       if (selected && !event.target.closest("button, a")) heart();
                     }}
-                    style={{ transform: selected && drag.axis === "x" ? `translate3d(${horizontalOffset}px, 0, 0) rotate(${rotation}deg)` : "" }}
+                    style={{
+                      transform: exiting
+                        ? `translate3d(calc(${exitSwipe.direction * 100}vw + ${exitSwipe.direction * 120}px), 0, 0) rotate(${exitSwipe.direction * 16}deg)`
+                        : selected && drag.axis === "x" ? `translate3d(${horizontalOffset}px, 0, 0) rotate(${rotation}deg)` : "",
+                      opacity: exiting ? 0 : 1,
+                    }}
                   >
-                    <ProductImage alt={item.name} className={styles.image} src={item.image} />
+                    <ProductImage alt={item.name} className={`${styles.image} ${styles.imageCover}`} onLoad={(event) => rememberImageRatio(item.id, event)} src={item.image} />
+                    <ProductImage alt="" aria-hidden="true" className={`${styles.image} ${styles.imageFull}`} src={item.image} />
                     <div className={styles.scrim} />
                     <div className={styles.top}>
-                      <span className={styles.chip}>{item.category}</span>
+                      {/* <span className={styles.chip}>{item.category}</span>
                       <span className={styles.counter} aria-label={`Product ${index + 1} of ${productCount}`}>
                         <b>{String(index + 1).padStart(2, "0")}</b><i aria-hidden="true">/</i>{productCount}
-                      </span>
+                      </span> */}
                     </div>
                     <div className={styles.info}>
-                      <div className={styles.inBrand}>
-                        <span className={styles.thumb} aria-hidden="true">{brand.slice(0, 1).toUpperCase()}</span>
-                        {brand}
-                      </div>
-                      <div className={styles.row}>
-                        <h1>{item.name}</h1>
-                        <span className={styles.price}>{priceLabel}</span>
-                      </div>
-                      <p>{item.description}</p>
+                      <p>{item.title}</p>
                       <div className={styles.meta}>
                         <span>{rating && <Icon filled name="star" size={15} />} <b>{rating || "New"}</b>{reviewCount ? ` (${reviewCount.toLocaleString()})` : " · No reviews"}</span>
                         <button type="button" data-scroll-action onClick={() => onDetails(item, "details")}>View details <Icon name="arrowRight" size={15} /></button>
@@ -287,10 +356,6 @@ export default function ProductScroll({
                       <Icon filled={likedItem} name="heart" size={25} />
                       <span>{likedItem ? "Hearted" : "Heart"}</span>
                     </button>
-                    <button className={styles.action} type="button" aria-label={`View ${reviewCount.toLocaleString()} reviews for ${item.name}`} onClick={() => onDetails(item, "reviews")}>
-                      <Icon name="message" size={24} />
-                      <span>{reviewCount.toLocaleString()}</span>
-                    </button>
                     <button className={styles.action} type="button" aria-label={`Share ${item.name}`} onClick={() => onShare(item)}>
                       <Icon name="share" size={24} />
                       <span>Share</span>
@@ -299,11 +364,6 @@ export default function ProductScroll({
                       <Icon filled={savedItem} name="bookmark" size={23} />
                       <span>Save</span>
                     </button>
-                    <button className={styles.action} type="button" aria-label={`More about ${item.name}`} onClick={() => onDetails(item, "details")}>
-                      <Icon name="more" size={24} />
-                      <span>More</span>
-                    </button>
-                    <span className={styles.brandThumb} aria-hidden="true">{brand.slice(0, 1).toUpperCase()}</span>
                   </div>
                 </div>
               </div>
