@@ -31,7 +31,13 @@ function syncLikedCollection(profile) {
   };
 }
 
-export default function ShopScrollerExperience({ user, initialPage = "Home" }) {
+export default function ShopScrollerExperience({
+  user,
+  initialPage = "Home",
+  onSignOut,
+  signOutBusy = false,
+  signOutError = "",
+}) {
   const [stage, setStage] = useState("loading");
   const [profile, setProfile] = useState(createProfile);
   const [historyProducts, setHistoryProducts] = useState([]);
@@ -182,6 +188,9 @@ export default function ShopScrollerExperience({ user, initialPage = "Home" }) {
       setProfile={setProfile}
       user={user}
       historyProducts={historyProducts}
+      onSignOut={onSignOut}
+      signOutBusy={signOutBusy}
+      signOutError={signOutError}
     />
   );
 }

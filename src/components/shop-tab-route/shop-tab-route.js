@@ -67,6 +67,13 @@ export default function ShopTabRoute({ initialPage }) {
   }
 
   return <>
-    <ShopScrollerExperience key={user.id} initialPage={initialPage} user={user} />
+    <ShopScrollerExperience
+      key={user.id}
+      initialPage={initialPage}
+      onSignOut={handleSignOut}
+      signOutBusy={busy}
+      signOutError={error}
+      user={user}
+    />
   </>;
 }

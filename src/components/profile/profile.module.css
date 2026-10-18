@@ -140,6 +140,36 @@
 .signal svg {
   color: var(--plum);
 }
+.accountPanel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+.accountPanel h2 {
+  margin: 0;
+}
+.accountPanel p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.signOut {
+  flex: none;
+  border-color: #c63d45;
+  color: #a82932;
+}
+.signOut:hover:not(:disabled) {
+  background: #fff5f5;
+}
+.accountPanel .signOutError {
+  flex-basis: 100%;
+  margin: 0;
+  color: #a82932;
+}
 .grid button {
   margin-top: 1rem;
 }
@@ -162,6 +192,11 @@
   }
   .grid {
     grid-template-columns: 1fr;
+  }
+  .accountPanel {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.85rem;
   }
   .edit {
     flex-wrap: wrap;

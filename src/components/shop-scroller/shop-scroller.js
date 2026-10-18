@@ -118,6 +118,9 @@ export default function AppShell({
   user,
   initialPage = "Home",
   learningRevision = 0,
+  onSignOut,
+  signOutBusy = false,
+  signOutError = "",
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -570,7 +573,16 @@ export default function AppShell({
       </Suspense>
     );
   else if (page === "Friends") content = <Friends />;
-  else content = <Profile profile={profile} username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"} onTune={() => setTuning(true)} />;
+  else content = (
+    <Profile
+      onSignOut={onSignOut}
+      onTune={() => setTuning(true)}
+      profile={profile}
+      signOutBusy={signOutBusy}
+      signOutError={signOutError}
+      username={user.user_metadata?.username || user.user_metadata?.name || "Shopper"}
+    />
+  );
 
   return (
     <div className={`${styles.shell} ${page === "Scroll" || page === "Search Scroll" ? styles.scrollShell : ""}`}>

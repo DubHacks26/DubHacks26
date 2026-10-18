@@ -4,7 +4,14 @@ import Button from "@/components/button/button";
 import Icon from "@/components/icon/icon";
 import styles from "./profile.module.css";
 
-export default function Profile({ profile, username, onTune }) {
+export default function Profile({
+  profile,
+  username,
+  onTune,
+  onSignOut,
+  signOutBusy = false,
+  signOutError = "",
+}) {
   const p = profile.preferences;
   return <section className="shop-page">
     <div className={styles.hero}>
@@ -23,5 +30,22 @@ export default function Profile({ profile, username, onTune }) {
       <p>Likes appear in your Liked collection and influence recommendations. Saved finds stay organized in your collections.</p>
       <Button onClick={onTune}>Edit preferences</Button>
     </div>
+    {onSignOut && (
+      <div className={`shop-panel ${styles.accountPanel}`}>
+        <div>
+          <h2>Account</h2>
+          <p>Finished shopping? Sign out of your account on this device.</p>
+        </div>
+        <Button
+          className={styles.signOut}
+          disabled={signOutBusy}
+          onClick={onSignOut}
+          variant="secondary"
+        >
+          {signOutBusy ? "Signing out…" : "Sign out"}
+        </Button>
+        {signOutError && <p className={styles.signOutError} role="alert">{signOutError}</p>}
+      </div>
+    )}
   </section>;
 }
